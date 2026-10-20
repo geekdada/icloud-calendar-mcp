@@ -78,8 +78,8 @@ impl EventZone {
     }
 }
 
-/// Expand `master` into the occurrences starting in `[range_start, range_end)`,
-/// sorted by start. A non-recurring event comes back unchanged.
+/// Expand `master` into the occurrences starting in `range_start..=range_end`
+/// (RDATEs: `[range_start, range_end)`), sorted by start. A non-recurring event comes back unchanged.
 ///
 /// `overrides` are the RECURRENCE-ID instances of the same UID; each replaces
 /// at most one generated occurrence.
@@ -117,7 +117,11 @@ pub fn expand(
             if master.is_all_day { local.date().and_time(NaiveTime::MIN) } else { local }
         };
         let until = rule.until.map(|u| until_in_zone(&u, zone));
-        let dates = rule_dates(rule, seed, until, to_local(range_start), to_local(range_end), MAX_ITERATIONS + 1)
+        // RRULE instants include the range end (as ical4j's getDates did): for an
+        // all-day series the end is truncated to that day's midnight, and an
+        // occurrence on that day must still be generated.
+        let end_inclusive = to_local(range_end) + TimeDelta::nanoseconds(1);
+        let dates = rule_dates(rule, seed, until, to_local(range_start), end_inclusive, MAX_ITERATIONS + 1)
             .map_err(|PeriodLimitExceeded| ExpansionLimit { uid: master.uid.clone(), limit: MAX_ITERATIONS })?;
         if dates.len() > MAX_ITERATIONS {
             return Err(ExpansionLimit { uid: master.uid.clone(), limit: MAX_ITERATIONS });
