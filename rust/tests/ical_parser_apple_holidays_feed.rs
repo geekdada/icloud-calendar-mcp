@@ -5,7 +5,7 @@
 
 use icloud_calendar_mcp::ical::parser::parse_all_events;
 
-const FEED: &str = include_str!("../../icaldav-core/src/test/resources/fixtures/apple_us_holidays.ics");
+const FEED: &str = include_str!("fixtures/apple_us_holidays.ics");
 
 #[test]
 fn every_vevent_in_the_feed_parses() {

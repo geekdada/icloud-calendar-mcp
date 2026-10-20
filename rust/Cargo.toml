@@ -36,3 +36,7 @@ wiremock = "0.6.5"
 lto = true
 codegen-units = 1
 strip = true
+
+[profile.dev]
+# ~60 integration-test binaries; full debug info makes the target dir many GB.
+debug = "line-tables-only"
