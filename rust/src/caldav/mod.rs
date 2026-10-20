@@ -13,10 +13,10 @@ use std::sync::LazyLock;
 use async_trait::async_trait;
 use regex::Regex;
 
-
-
-
-
+pub use etag::normalize_etag;
+pub use http::HttpCalDavClient;
+pub use url_normalizer::normalize_icloud_url;
+pub use xml::ICloudXmlParser;
 
 /// Credentials for CalDAV authentication: for iCloud, the Apple ID and an
 /// app-specific password.
@@ -178,8 +178,7 @@ impl CalDavEvent {
 pub fn extract_calendar_id_from_href(href: &str) -> String {
     href.trim_matches('/')
         .split('/')
-        .filter(|segment| !segment.is_empty())
-        .last()
+        .rfind(|segment| !segment.is_empty())
         .map(str::to_string)
         .unwrap_or_else(|| href.to_string())
 }
