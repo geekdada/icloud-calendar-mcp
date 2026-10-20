@@ -12,6 +12,7 @@ static ISO_DURATION: LazyLock<Regex> = LazyLock::new(|| {
     )
     .expect("valid regex")
 });
+static WEEKS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)W").expect("valid regex"));
 static DAYS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)D").expect("valid regex"));
 static HOURS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)H").expect("valid regex"));
 static MINUTES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\d+)M").expect("valid regex"));
@@ -67,7 +68,9 @@ fn parse_lenient(value: &str) -> Option<TimeDelta> {
         let grab = |re: &Regex, part: &str| -> i64 {
             re.captures(part).and_then(|c| c[1].parse().ok()).unwrap_or(0)
         };
-        TimeDelta::try_days(grab(&DAYS, date_part))?
+        // Weeks combined with days (`P1W2D`) is ISO 8601, not RFC 5545, but
+        // peers emit it and dropping the weeks would shorten the event.
+        TimeDelta::try_days(grab(&WEEKS, date_part).checked_mul(7)?.checked_add(grab(&DAYS, date_part))?)?
             .checked_add(&TimeDelta::try_hours(grab(&HOURS, time_part))?)?
             .checked_add(&TimeDelta::try_minutes(grab(&MINUTES, time_part))?)?
             .checked_add(&TimeDelta::try_seconds(grab(&SECONDS, time_part))?)?
@@ -127,6 +130,8 @@ mod tests {
         assert_eq!(parse_duration("+PT5M"), Some(TimeDelta::minutes(5)));
         assert_eq!(parse_duration("PT0S"), Some(TimeDelta::zero()));
         assert_eq!(parse_duration("PT1.5S"), Some(TimeDelta::milliseconds(1500)));
+        assert_eq!(parse_duration("P1W2D"), Some(TimeDelta::days(9)));
+        assert_eq!(parse_duration("-P1W2DT3H"), Some(-(TimeDelta::days(9) + TimeDelta::hours(3))));
     }
 
     #[test]
