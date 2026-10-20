@@ -78,7 +78,8 @@ impl EventZone {
     }
 }
 
-/// Expand `master` into the occurrences starting in `[range_start, range_end)`,
+/// Expand `master` into the occurrences starting in the range: RRULE instances up
+/// to and including `range_end` (ical4j semantics), RDATEs before it,
 /// sorted by start. A non-recurring event comes back unchanged.
 ///
 /// `overrides` are the RECURRENCE-ID instances of the same UID; each replaces

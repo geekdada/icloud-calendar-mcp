@@ -165,7 +165,7 @@ pub fn exdate_occurrence(existing_ics: Option<&str>, recurrence_id: &str) -> Res
     if !master.exdates.iter().any(|e| e.timestamp == recid.timestamp) {
         master.exdates.push(recid);
     }
-    master.sequence += 1;
+    master.sequence = master.sequence.saturating_add(1);
     master.last_modified = Some(ICalDateTime::now());
     let mut events = vec![master];
     events.extend(remaining);
@@ -238,7 +238,7 @@ fn truncate_master(master: &ICalEvent, overrides: &[ICalEvent], target: i64) -> 
     }
     new_master.exdates.retain(|e| e.timestamp < target);
     new_master.rdates.retain(|r| r.timestamp < target);
-    new_master.sequence += 1;
+    new_master.sequence = new_master.sequence.saturating_add(1);
     new_master.last_modified = Some(ICalDateTime::now());
     let kept_overrides =
         overrides.iter().filter(|o| normalized_recid_timestamp(o, master).unwrap_or(i64::MAX) < target).cloned().collect();
@@ -408,7 +408,8 @@ fn apply_patch(original: ICalEvent, patch: &EventPatch) -> Result<ICalEvent, Pat
     if let Some(alarms) = &patch.alarms {
         event.alarms = alarms.iter().map(AlarmSpec::to_ical_alarm).collect();
     }
-    event.sequence += 1;
+    // Saturate: a hostile SEQUENCE:2147483647 must not overflow.
+    event.sequence = event.sequence.saturating_add(1);
     event.last_modified = Some(ICalDateTime::now());
     Ok(event)
 }
