@@ -124,7 +124,8 @@ impl Component {
 /// component is left open or closed out of order. Lines that are not valid
 /// content lines are skipped, the way a relaxed parser tolerates server noise.
 pub fn parse_calendar(data: &str) -> Result<Component, ICalError> {
-    let unfolded = unfold(&preprocess(data));
+    // A UTF-8 byte-order mark would otherwise glue itself onto `BEGIN`.
+    let unfolded = unfold(&preprocess(data.trim_start_matches('\u{feff}')));
     let mut stack: Vec<Component> = Vec::new();
     let mut root: Option<Component> = None;
 
