@@ -222,10 +222,7 @@ fn map_timed(event: &ICalEvent) -> ParsedEvent {
 /// The trigger keeps its wire form: a duration for relative alarms, a
 /// basic-format UTC instant for absolute ones.
 fn map_alarm(alarm: &ICalAlarm) -> Option<ParsedAlarm> {
-    let trigger = alarm
-        .trigger
-        .map(format_duration)
-        .or_else(|| alarm.trigger_absolute.map(|t| t.to_ical_string()))?;
+    let trigger = alarm.trigger.map(format_duration).or_else(|| alarm.trigger_absolute.map(|t| t.to_ical_string()))?;
     Some(ParsedAlarm {
         trigger,
         action: alarm.action.as_str().to_string(),
@@ -349,7 +346,9 @@ mod tests {
 
     #[test]
     fn overrides_without_master_are_mapped() {
-        let ics = wrap("BEGIN:VEVENT\r\nUID:o\r\nRECURRENCE-ID:20250102T100000Z\r\nDTSTART:20250102T150000Z\r\nSUMMARY:Only override\r\nEND:VEVENT\r\n");
+        let ics = wrap(
+            "BEGIN:VEVENT\r\nUID:o\r\nRECURRENCE-ID:20250102T100000Z\r\nDTSTART:20250102T150000Z\r\nSUMMARY:Only override\r\nEND:VEVENT\r\n",
+        );
         let occ = parse_occurrences(&ics, utc("2025-01-01T00:00:00Z"), utc("2025-01-31T00:00:00Z")).unwrap();
         assert_eq!(occ.len(), 1);
         assert_eq!(occ[0].recurrence_id.as_deref(), Some("20250102T100000Z"));
@@ -357,7 +356,9 @@ mod tests {
 
     #[test]
     fn expansion_limit_propagates() {
-        let ics = wrap("BEGIN:VEVENT\r\nUID:m\r\nDTSTART:20250101T000000Z\r\nRRULE:FREQ=MINUTELY\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let ics = wrap(
+            "BEGIN:VEVENT\r\nUID:m\r\nDTSTART:20250101T000000Z\r\nRRULE:FREQ=MINUTELY\r\nSUMMARY:x\r\nEND:VEVENT\r\n",
+        );
         assert!(parse_occurrences(&ics, utc("2025-01-01T00:00:00Z"), utc("2025-12-31T23:59:59Z")).is_err());
     }
 }

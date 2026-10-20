@@ -35,8 +35,8 @@ impl ICalDateTime {
     pub fn parse(value: &str, tzid: Option<&str>) -> Result<Self, ICalError> {
         let trimmed = value.trim();
         if let Some(utc) = trimmed.strip_suffix('Z') {
-            let local = parse_basic_date_time(utc)
-                .ok_or_else(|| ICalError::new(format!("Invalid UTC datetime: {value}")))?;
+            let local =
+                parse_basic_date_time(utc).ok_or_else(|| ICalError::new(format!("Invalid UTC datetime: {value}")))?;
             return Ok(Self::utc(local.and_utc().timestamp_millis()));
         }
         if trimmed.len() == 8 && trimmed.bytes().all(|b| b.is_ascii_digit()) {
@@ -98,9 +98,10 @@ impl ICalDateTime {
 
     /// This instant with the wall-clock fields of [`zone`](Self::zone).
     pub fn to_zoned(&self) -> DateTime<Tz> {
-        self.zone().timestamp_millis_opt(self.timestamp).single().unwrap_or_else(|| {
-            Tz::UTC.timestamp_millis_opt(0).single().expect("epoch is representable")
-        })
+        self.zone()
+            .timestamp_millis_opt(self.timestamp)
+            .single()
+            .unwrap_or_else(|| Tz::UTC.timestamp_millis_opt(0).single().expect("epoch is representable"))
     }
 
     /// The instant in UTC.

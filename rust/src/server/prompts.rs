@@ -25,7 +25,9 @@ pub fn definitions() -> Vec<Prompt> {
         ),
         Prompt::new(
             "reschedule",
-            Some("Move an existing event to a new time by looking it up with get_events and editing it with update_event."),
+            Some(
+                "Move an existing event to a new time by looking it up with get_events and editing it with update_event.",
+            ),
             Some(vec![
                 arg("event", "Title or description of the event to move", true),
                 arg("new_time", "New start time (ISO 8601, e.g. 2026-02-01T15:00:00Z)", false),

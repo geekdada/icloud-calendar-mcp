@@ -58,79 +58,38 @@ impl ErrorCode {
 /// Error categories with context, retryability and a suggested next step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CalendarError {
-    Validation {
-        field: Option<String>,
-        detail: String,
-    },
-    Authentication {
-        reason: String,
-    },
-    Authorization {
-        calendar_name: Option<String>,
-        reason: String,
-    },
-    NotFound {
-        resource_type: String,
-        resource_id: Option<String>,
-    },
-    Conflict {
-        event_title: Option<String>,
-        reason: String,
-    },
-    RateLimited {
-        retry_after_ms: u64,
-    },
-    Network {
-        reason: String,
-    },
-    Timeout {
-        timeout_ms: u64,
-    },
-    ServerError {
-        server_code: u16,
-        reason: String,
-    },
-    CalDav {
-        reason: String,
-    },
-    Internal {
-        reason: String,
-    },
+    Validation { field: Option<String>, detail: String },
+    Authentication { reason: String },
+    Authorization { calendar_name: Option<String>, reason: String },
+    NotFound { resource_type: String, resource_id: Option<String> },
+    Conflict { event_title: Option<String>, reason: String },
+    RateLimited { retry_after_ms: u64 },
+    Network { reason: String },
+    Timeout { timeout_ms: u64 },
+    ServerError { server_code: u16, reason: String },
+    CalDav { reason: String },
+    Internal { reason: String },
 }
 
 impl CalendarError {
     pub fn validation() -> Self {
-        CalendarError::Validation {
-            field: None,
-            detail: "Invalid input".into(),
-        }
+        CalendarError::Validation { field: None, detail: "Invalid input".into() }
     }
 
     pub fn authentication() -> Self {
-        CalendarError::Authentication {
-            reason: "Authentication failed".into(),
-        }
+        CalendarError::Authentication { reason: "Authentication failed".into() }
     }
 
     pub fn authorization() -> Self {
-        CalendarError::Authorization {
-            calendar_name: None,
-            reason: "Access denied".into(),
-        }
+        CalendarError::Authorization { calendar_name: None, reason: "Access denied".into() }
     }
 
     pub fn not_found() -> Self {
-        CalendarError::NotFound {
-            resource_type: "resource".into(),
-            resource_id: None,
-        }
+        CalendarError::NotFound { resource_type: "resource".into(), resource_id: None }
     }
 
     pub fn conflict() -> Self {
-        CalendarError::Conflict {
-            event_title: None,
-            reason: "Resource was modified".into(),
-        }
+        CalendarError::Conflict { event_title: None, reason: "Resource was modified".into() }
     }
 
     pub fn rate_limited() -> Self {
@@ -138,9 +97,7 @@ impl CalendarError {
     }
 
     pub fn network() -> Self {
-        CalendarError::Network {
-            reason: "Network error".into(),
-        }
+        CalendarError::Network { reason: "Network error".into() }
     }
 
     pub fn timeout() -> Self {
@@ -148,22 +105,15 @@ impl CalendarError {
     }
 
     pub fn server_error() -> Self {
-        CalendarError::ServerError {
-            server_code: 500,
-            reason: "Server error".into(),
-        }
+        CalendarError::ServerError { server_code: 500, reason: "Server error".into() }
     }
 
     pub fn caldav() -> Self {
-        CalendarError::CalDav {
-            reason: "Calendar service error".into(),
-        }
+        CalendarError::CalDav { reason: "Calendar service error".into() }
     }
 
     pub fn internal() -> Self {
-        CalendarError::Internal {
-            reason: "Internal error".into(),
-        }
+        CalendarError::Internal { reason: "Internal error".into() }
     }
 
     /// The category's wire code.
@@ -277,18 +227,12 @@ pub enum FailureKind {
 pub fn from_failure(kind: &FailureKind) -> CalendarError {
     match kind {
         FailureKind::Timeout => CalendarError::timeout(),
-        FailureKind::UnknownHost(host) => CalendarError::Network {
-            reason: format!("Unknown host: {host}"),
-        },
-        FailureKind::Tls => CalendarError::Authentication {
-            reason: "Certificate error".into(),
-        },
-        FailureKind::ConnectionRefused => CalendarError::Network {
-            reason: "Connection refused".into(),
-        },
-        FailureKind::Other(message) => CalendarError::Internal {
-            reason: message.clone().unwrap_or_else(|| "Unknown error".into()),
-        },
+        FailureKind::UnknownHost(host) => CalendarError::Network { reason: format!("Unknown host: {host}") },
+        FailureKind::Tls => CalendarError::Authentication { reason: "Certificate error".into() },
+        FailureKind::ConnectionRefused => CalendarError::Network { reason: "Connection refused".into() },
+        FailureKind::Other(message) => {
+            CalendarError::Internal { reason: message.clone().unwrap_or_else(|| "Unknown error".into()) }
+        }
     }
 }
 
@@ -303,18 +247,10 @@ pub fn from_http_code(code: u16, message: &str) -> CalendarError {
         429 => CalendarError::rate_limited(),
         500..=599 => CalendarError::ServerError {
             server_code: code,
-            reason: if message.is_empty() {
-                "Server error".into()
-            } else {
-                message.into()
-            },
+            reason: if message.is_empty() { "Server error".into() } else { message.into() },
         },
         _ => CalendarError::Internal {
-            reason: if message.is_empty() {
-                format!("Unexpected error ({code})")
-            } else {
-                message.into()
-            },
+            reason: if message.is_empty() { format!("Unexpected error ({code})") } else { message.into() },
         },
     }
 }
@@ -323,21 +259,14 @@ pub fn from_http_code(code: u16, message: &str) -> CalendarError {
 ///
 /// The JSON is assembled by hand (with spaces after `:` and `,`) so the text is
 /// byte-identical to the Kotlin build's output.
-pub fn create_error_result(
-    code: ErrorCode,
-    message: &str,
-    details: Option<&str>,
-) -> CallToolResult {
+pub fn create_error_result(code: ErrorCode, message: &str, details: Option<&str>) -> CallToolResult {
     let mut json = format!(
         r#"{{"success": false, "error": {{"code": "{}", "message": "{}""#,
         code.code(),
         sanitize_error_message(message)
     );
     if let Some(details) = details {
-        json.push_str(&format!(
-            r#", "details": "{}""#,
-            sanitize_error_message(details)
-        ));
+        json.push_str(&format!(r#", "details": "{}""#, sanitize_error_message(details)));
     }
     json.push_str("}}");
     CallToolResult::error(vec![ContentBlock::text(json)])
@@ -348,11 +277,7 @@ pub fn create_error_result(
 pub fn validation_error(errors: &[String]) -> CallToolResult {
     match errors {
         [single] => create_error_result(ErrorCode::ValidationError, single, None),
-        _ => create_error_result(
-            ErrorCode::ValidationError,
-            "Multiple validation errors",
-            Some(&errors.join("; ")),
-        ),
+        _ => create_error_result(ErrorCode::ValidationError, "Multiple validation errors", Some(&errors.join("; "))),
     }
 }
 
@@ -412,21 +337,13 @@ pub fn rate_limit_error(retry_after_ms: u64) -> CallToolResult {
 /// (to stderr); its message may hold sensitive data, so neither reaches the caller.
 pub fn internal_error(kind: &str) -> CallToolResult {
     eprintln!("Internal error: {kind}");
-    create_error_result(
-        ErrorCode::InternalError,
-        "An internal error occurred. Please try again.",
-        None,
-    )
+    create_error_result(ErrorCode::InternalError, "An internal error occurred. Please try again.", None)
 }
 
 /// Mask an email for display: `john.doe@icloud.com` -> `joh***@***.com`.
 pub fn mask_email(email: &str) -> String {
     let keep_three = |part: &str| {
-        if part.chars().count() <= 3 {
-            "***".to_string()
-        } else {
-            format!("{}***", take_chars(part, 3))
-        }
+        if part.chars().count() <= 3 { "***".to_string() } else { format!("{}***", take_chars(part, 3)) }
     };
     let Some((local, domain)) = email.split_once('@') else {
         return keep_three(email);
@@ -439,9 +356,7 @@ pub fn mask_email(email: &str) -> String {
 }
 
 fn take_chars(text: &str, count: usize) -> &str {
-    text.char_indices()
-        .nth(count)
-        .map_or(text, |(i, _)| &text[..i])
+    text.char_indices().nth(count).map_or(text, |(i, _)| &text[..i])
 }
 
 /// Longest message (in UTF-16 units, as Kotlin counted) sanitized in full;
@@ -480,24 +395,14 @@ static CREDENTIAL_PATTERNS: LazyLock<Vec<CredentialPattern>> = LazyLock::new(|| 
 
 static PATH_PATTERNS: LazyLock<Vec<(Regex, &'static str)>> = LazyLock::new(|| {
     vec![
-        (
-            Regex::new(r"/Users/[A-Za-z0-9_]+/").expect("valid regex"),
-            "/****/",
-        ),
-        (
-            Regex::new(r"/home/[A-Za-z0-9_]+/").expect("valid regex"),
-            "/****/",
-        ),
-        (
-            Regex::new(r"C:\\Users\\[A-Za-z0-9_]+\\").expect("valid regex"),
-            r"C:\****\",
-        ),
+        (Regex::new(r"/Users/[A-Za-z0-9_]+/").expect("valid regex"), "/****/"),
+        (Regex::new(r"/home/[A-Za-z0-9_]+/").expect("valid regex"), "/****/"),
+        (Regex::new(r"C:\\Users\\[A-Za-z0-9_]+\\").expect("valid regex"), r"C:\****\"),
     ]
 });
 
 static EMAIL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"([a-zA-Z0-9]{1,3})[a-zA-Z0-9._+-]*@[A-Za-z0-9_.-]+\.[A-Za-z0-9_]+")
-        .expect("valid regex")
+    Regex::new(r"([a-zA-Z0-9]{1,3})[a-zA-Z0-9._+-]*@[A-Za-z0-9_.-]+\.[A-Za-z0-9_]+").expect("valid regex")
 });
 
 /// Replace every match of `regex` in `input` with `replacement`, skipping
@@ -512,22 +417,14 @@ pub(crate) fn replace_not_after_letter(
     let (mut copied_to, mut search_from) = (0, 0);
     while let Some(caps) = regex.captures_at(input, search_from) {
         let whole = caps.get(0).expect("group 0 always matches");
-        if input[..whole.start()]
-            .chars()
-            .next_back()
-            .is_some_and(|c| c.is_ascii_alphabetic())
-        {
+        if input[..whole.start()].chars().next_back().is_some_and(|c| c.is_ascii_alphabetic()) {
             search_from = next_char_boundary(input, whole.start());
             continue;
         }
         out.push_str(&input[copied_to..whole.start()]);
         out.push_str(&replacement(&caps));
         copied_to = whole.end();
-        search_from = if whole.is_empty() {
-            next_char_boundary(input, whole.end())
-        } else {
-            whole.end()
-        };
+        search_from = if whole.is_empty() { next_char_boundary(input, whole.end()) } else { whole.end() };
         if search_from > input.len() {
             break;
         }
@@ -537,10 +434,7 @@ pub(crate) fn replace_not_after_letter(
 }
 
 fn next_char_boundary(text: &str, from: usize) -> usize {
-    text[from..]
-        .chars()
-        .next()
-        .map_or(text.len() + 1, |c| from + c.len_utf8())
+    text[from..].chars().next().map_or(text.len() + 1, |c| from + c.len_utf8())
 }
 
 /// Cut `message` to at most [`MAX_MESSAGE_LENGTH`] UTF-16 units, on a char boundary.
@@ -564,25 +458,16 @@ fn sanitize_error_message(message: &str) -> String {
     let mut sanitized = truncate_message(message);
     for pattern in CREDENTIAL_PATTERNS.iter() {
         sanitized = if pattern.not_after_letter {
-            replace_not_after_letter(&pattern.regex, &sanitized, |_| {
-                pattern.replacement.to_string()
-            })
+            replace_not_after_letter(&pattern.regex, &sanitized, |_| pattern.replacement.to_string())
         } else {
-            pattern
-                .regex
-                .replace_all(&sanitized, NoExpand(pattern.replacement))
-                .into_owned()
+            pattern.regex.replace_all(&sanitized, NoExpand(pattern.replacement)).into_owned()
         };
     }
     for (regex, replacement) in PATH_PATTERNS.iter() {
-        sanitized = regex
-            .replace_all(&sanitized, NoExpand(replacement))
-            .into_owned();
+        sanitized = regex.replace_all(&sanitized, NoExpand(replacement)).into_owned();
     }
     sanitized = EMAIL_PATTERN
-        .replace_all(&sanitized, |caps: &regex::Captures<'_>| {
-            format!("{}***@***.***", &caps[1])
-        })
+        .replace_all(&sanitized, |caps: &regex::Captures<'_>| format!("{}***@***.***", &caps[1]))
         .into_owned();
     escape_json(&sanitized)
 }
@@ -612,20 +497,11 @@ mod tests {
     use super::*;
 
     fn text(result: &CallToolResult) -> String {
-        result
-            .content
-            .first()
-            .and_then(|c| c.as_text())
-            .map(|t| t.text.clone())
-            .expect("text content")
+        result.content.first().and_then(|c| c.as_text()).map(|t| t.text.clone()).expect("text content")
     }
 
     fn sanitized(message: &str) -> String {
-        text(&create_error_result(
-            ErrorCode::ValidationError,
-            message,
-            None,
-        ))
+        text(&create_error_result(ErrorCode::ValidationError, message, None))
     }
 
     #[test]
@@ -641,11 +517,7 @@ mod tests {
 
     #[test]
     fn result_includes_details_when_provided() {
-        let result = create_error_result(
-            ErrorCode::ValidationError,
-            "Multiple errors",
-            Some("Error 1; Error 2"),
-        );
+        let result = create_error_result(ErrorCode::ValidationError, "Multiple errors", Some("Error 1; Error 2"));
         assert!(text(&result).contains(r#""details": "Error 1; Error 2""#));
         assert!(serde_json::from_str::<serde_json::Value>(&text(&result)).is_ok());
     }
@@ -712,27 +584,17 @@ mod tests {
         assert!(text(&caldav_error(Some("HTTP 403 Forbidden"))).contains("Access denied"));
         assert!(text(&caldav_error(Some("HTTP 404 Not Found"))).contains("not found"));
         assert!(text(&caldav_error(Some("Connection timeout after 30s"))).contains("timed out"));
-        assert!(
-            text(&caldav_error(Some("Unable to connect to host"))).contains("Unable to connect")
-        );
-        let out = text(&caldav_error(Some(
-            "Some internal server error with stack trace",
-        )));
+        assert!(text(&caldav_error(Some("Unable to connect to host"))).contains("Unable to connect"));
+        let out = text(&caldav_error(Some("Some internal server error with stack trace")));
         assert!(out.contains("Calendar service error") && !out.contains("stack trace"));
         assert!(text(&caldav_error(None)).contains("Calendar service error"));
     }
 
     #[test]
     fn internal_error_is_generic() {
-        let out = text(&internal_error(
-            "NullPointerException at com.example.Secret.method(Secret.kt:42)",
-        ));
+        let out = text(&internal_error("NullPointerException at com.example.Secret.method(Secret.kt:42)"));
         assert!(out.contains("internal error"));
-        assert!(
-            !out.contains("NullPointerException")
-                && !out.contains("Secret.kt")
-                && !out.contains(":42")
-        );
+        assert!(!out.contains("NullPointerException") && !out.contains("Secret.kt") && !out.contains(":42"));
         let out = text(&internal_error("SecretInternalClass"));
         assert!(!out.contains("SecretInternalClass"));
     }
@@ -777,96 +639,41 @@ mod tests {
 
     #[test]
     fn calendar_error_properties() {
-        let v = CalendarError::Validation {
-            field: Some("title".into()),
-            detail: "Required".into(),
-        };
+        let v = CalendarError::Validation { field: Some("title".into()), detail: "Required".into() };
         assert!(!v.is_retryable());
         assert_eq!(v.code(), "VALIDATION_ERROR");
         assert_eq!(v.suggested_action(), "Check input parameters and retry");
         assert_eq!(v.safe_message(), "Required");
         assert_eq!(CalendarError::authentication().http_status(), 401);
         assert!(!CalendarError::authentication().is_retryable());
-        let a = CalendarError::Authorization {
-            calendar_name: Some("Work".into()),
-            reason: "Access denied".into(),
-        };
+        let a = CalendarError::Authorization { calendar_name: Some("Work".into()), reason: "Access denied".into() };
         assert_eq!(a.suggested_action(), "Check calendar sharing permissions");
-        let n = CalendarError::NotFound {
-            resource_type: "calendar".into(),
-            resource_id: Some("home".into()),
-        };
+        let n = CalendarError::NotFound { resource_type: "calendar".into(), resource_id: Some("home".into()) };
         assert_eq!(n.safe_message(), "calendar not found");
-        assert_eq!(
-            CalendarError::conflict().suggested_action(),
-            "Refresh and retry with updated data"
-        );
-        assert!(
-            CalendarError::RateLimited {
-                retry_after_ms: 5000
-            }
-            .is_retryable()
-        );
-        let net = CalendarError::Network {
-            reason: "Connection refused".into(),
-        };
+        assert_eq!(CalendarError::conflict().suggested_action(), "Refresh and retry with updated data");
+        assert!(CalendarError::RateLimited { retry_after_ms: 5000 }.is_retryable());
+        let net = CalendarError::Network { reason: "Connection refused".into() };
         assert!(net.is_retryable());
         assert_eq!(net.safe_message(), "Connection refused");
-        assert_eq!(
-            CalendarError::Timeout { timeout_ms: 30_000 }.http_status(),
-            408
-        );
-        let s = CalendarError::ServerError {
-            server_code: 503,
-            reason: "Service Unavailable".into(),
-        };
+        assert_eq!(CalendarError::Timeout { timeout_ms: 30_000 }.http_status(), 408);
+        let s = CalendarError::ServerError { server_code: 503, reason: "Service Unavailable".into() };
         assert!(s.is_retryable());
         assert_eq!(s.http_status(), 503);
         assert!(!CalendarError::internal().is_retryable());
-        assert_eq!(
-            CalendarError::internal().safe_message(),
-            "An internal error occurred"
-        );
+        assert_eq!(CalendarError::internal().safe_message(), "An internal error occurred");
     }
 
     #[test]
     fn to_error_code_mapping() {
-        assert_eq!(
-            CalendarError::validation().to_error_code(),
-            ErrorCode::ValidationError
-        );
-        assert_eq!(
-            CalendarError::authentication().to_error_code(),
-            ErrorCode::AuthenticationError
-        );
-        assert_eq!(
-            CalendarError::not_found().to_error_code(),
-            ErrorCode::NotFound
-        );
-        assert_eq!(
-            CalendarError::conflict().to_error_code(),
-            ErrorCode::Conflict
-        );
-        assert_eq!(
-            CalendarError::rate_limited().to_error_code(),
-            ErrorCode::RateLimited
-        );
-        assert_eq!(
-            CalendarError::network().to_error_code(),
-            ErrorCode::CaldavError
-        );
-        assert_eq!(
-            CalendarError::timeout().to_error_code(),
-            ErrorCode::CaldavError
-        );
-        assert_eq!(
-            CalendarError::server_error().to_error_code(),
-            ErrorCode::CaldavError
-        );
-        assert_eq!(
-            CalendarError::internal().to_error_code(),
-            ErrorCode::InternalError
-        );
+        assert_eq!(CalendarError::validation().to_error_code(), ErrorCode::ValidationError);
+        assert_eq!(CalendarError::authentication().to_error_code(), ErrorCode::AuthenticationError);
+        assert_eq!(CalendarError::not_found().to_error_code(), ErrorCode::NotFound);
+        assert_eq!(CalendarError::conflict().to_error_code(), ErrorCode::Conflict);
+        assert_eq!(CalendarError::rate_limited().to_error_code(), ErrorCode::RateLimited);
+        assert_eq!(CalendarError::network().to_error_code(), ErrorCode::CaldavError);
+        assert_eq!(CalendarError::timeout().to_error_code(), ErrorCode::CaldavError);
+        assert_eq!(CalendarError::server_error().to_error_code(), ErrorCode::CaldavError);
+        assert_eq!(CalendarError::internal().to_error_code(), ErrorCode::InternalError);
     }
 
     #[test]
@@ -913,24 +720,12 @@ mod tests {
 
     #[test]
     fn http_code_mapping() {
-        assert!(matches!(
-            from_http_code(401, ""),
-            CalendarError::Authentication { .. }
-        ));
-        assert!(matches!(
-            from_http_code(403, ""),
-            CalendarError::Authorization { .. }
-        ));
-        assert!(matches!(
-            from_http_code(429, ""),
-            CalendarError::RateLimited { .. }
-        ));
+        assert!(matches!(from_http_code(401, ""), CalendarError::Authentication { .. }));
+        assert!(matches!(from_http_code(403, ""), CalendarError::Authorization { .. }));
+        assert!(matches!(from_http_code(429, ""), CalendarError::RateLimited { .. }));
         let s = from_http_code(503, "Service Unavailable");
         assert!(matches!(s, CalendarError::ServerError { .. }) && s.is_retryable());
-        assert_eq!(
-            from_http_code(418, "").safe_message(),
-            "An internal error occurred"
-        );
+        assert_eq!(from_http_code(418, "").safe_message(), "An internal error occurred");
     }
 
     #[test]
@@ -968,15 +763,9 @@ mod tests {
     fn sanitization_stress_completes() {
         let mut message = String::new();
         for i in 0..1000 {
-            message.push_str(&format!(
-                "password=secret{i} token=tok{i} user{i}@example.com /Users/user{i}/secret "
-            ));
+            message.push_str(&format!("password=secret{i} token=tok{i} user{i}@example.com /Users/user{i}/secret "));
         }
-        let out = text(&create_error_result(
-            ErrorCode::InternalError,
-            &message,
-            None,
-        ));
+        let out = text(&create_error_result(ErrorCode::InternalError, &message, None));
         assert!(!out.contains("secret0"));
     }
 

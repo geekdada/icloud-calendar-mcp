@@ -65,9 +65,7 @@ fn parse_lenient(value: &str) -> Option<TimeDelta> {
         TimeDelta::try_days(weeks.parse::<i64>().ok()?.checked_mul(7)?)?
     } else {
         let (date_part, time_part) = body.split_once('T').unwrap_or((body, ""));
-        let grab = |re: &Regex, part: &str| -> i64 {
-            re.captures(part).and_then(|c| c[1].parse().ok()).unwrap_or(0)
-        };
+        let grab = |re: &Regex, part: &str| -> i64 { re.captures(part).and_then(|c| c[1].parse().ok()).unwrap_or(0) };
         // Weeks combined with days (`P1W2D`) is ISO 8601, not RFC 5545, but
         // peers emit it and dropping the weeks would shorten the event.
         TimeDelta::try_days(grab(&WEEKS, date_part).checked_mul(7)?.checked_add(grab(&DAYS, date_part))?)?

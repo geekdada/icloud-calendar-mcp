@@ -43,7 +43,8 @@ pub fn generate_vtimezone(tzid: &str) -> String {
         return String::new();
     };
     let first_year = Utc::now().year();
-    let by_year: Vec<Vec<Transition>> = (first_year..first_year + SAMPLE_YEARS).map(|y| transitions_in(zone, y)).collect();
+    let by_year: Vec<Vec<Transition>> =
+        (first_year..first_year + SAMPLE_YEARS).map(|y| transitions_in(zone, y)).collect();
 
     let mut out = String::new();
     push_line(&mut out, "BEGIN:VTIMEZONE");
@@ -154,7 +155,8 @@ fn is_last_week(date: NaiveDate) -> bool {
 
 /// Every offset change in `year`, in order.
 fn transitions_in(zone: Tz, year: i32) -> Vec<Transition> {
-    let bounds = (Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).single(), Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).single());
+    let bounds =
+        (Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).single(), Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).single());
     let (Some(start), Some(end)) = bounds else {
         return Vec::new();
     };

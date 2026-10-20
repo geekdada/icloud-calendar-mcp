@@ -22,10 +22,7 @@ pub struct Credentials {
 
 impl Credentials {
     pub fn new(username: impl Into<String>, password: impl Into<String>) -> Self {
-        Self {
-            username: username.into(),
-            password: password.into(),
-        }
+        Self { username: username.into(), password: password.into() }
     }
 }
 
@@ -74,9 +71,7 @@ pub fn load_from_environment() -> Result<Option<Credentials>, CredentialError> {
 
 /// [`load_from_environment`] over an arbitrary variable lookup, so tests need
 /// not touch the process environment.
-pub fn load_with(
-    lookup: impl Fn(&str) -> Option<String>,
-) -> Result<Option<Credentials>, CredentialError> {
+pub fn load_with(lookup: impl Fn(&str) -> Option<String>) -> Result<Option<Credentials>, CredentialError> {
     let username = non_blank(lookup(ENV_ICLOUD_USERNAME));
     let password = non_blank(lookup(ENV_ICLOUD_PASSWORD));
     let (username, password) = match (username, password) {
@@ -90,15 +85,11 @@ pub fn load_with(
         (Some(username), Some(password)) => (username, password),
     };
     if !username.contains('@') {
-        return Err(CredentialError(
-            "Invalid username format: expected email address".into(),
-        ));
+        return Err(CredentialError("Invalid username format: expected email address".into()));
     }
     // UTF-16 length, as the Kotlin build measured it.
     if password.encode_utf16().count() < MIN_PASSWORD_LENGTH {
-        return Err(CredentialError(
-            "Password too short: expected app-specific password".into(),
-        ));
+        return Err(CredentialError("Password too short: expected app-specific password".into()));
     }
     Ok(Some(Credentials { username, password }))
 }
@@ -110,8 +101,7 @@ pub fn is_configured() -> bool {
 
 /// [`is_configured`] over an arbitrary variable lookup.
 pub fn is_configured_with(lookup: impl Fn(&str) -> Option<String>) -> bool {
-    non_blank(lookup(ENV_ICLOUD_USERNAME)).is_some()
-        && non_blank(lookup(ENV_ICLOUD_PASSWORD)).is_some()
+    non_blank(lookup(ENV_ICLOUD_USERNAME)).is_some() && non_blank(lookup(ENV_ICLOUD_PASSWORD)).is_some()
 }
 
 /// Mask a credential for logging: the first `show_chars` characters then
@@ -131,10 +121,7 @@ mod tests {
     use std::collections::HashMap;
 
     fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
-        let map: HashMap<String, String> = pairs
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
+        let map: HashMap<String, String> = pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         move |name| map.get(name).cloned()
     }
 
@@ -165,21 +152,13 @@ mod tests {
     #[test]
     fn formatting_masks_username_and_hides_password() {
         let creds = Credentials::new("user@icloud.com", "xxxx-xxxx-xxxx-xxxx");
-        for shown in [
-            creds.to_string(),
-            format!("{creds:?}"),
-            format!("{:?}", creds.clone()),
-        ] {
+        for shown in [creds.to_string(), format!("{creds:?}"), format!("{:?}", creds.clone())] {
             assert!(shown.contains("use***"));
             assert!(!shown.contains("user@icloud.com"));
             assert!(!shown.contains("xxxx-xxxx-xxxx-xxxx"));
             assert!(shown.contains("password=****"));
         }
-        assert!(
-            Credentials::new("ab", "xxxx")
-                .to_string()
-                .contains("username=***")
-        );
+        assert!(Credentials::new("ab", "xxxx").to_string().contains("username=***"));
     }
 
     #[test]
@@ -192,10 +171,7 @@ mod tests {
     #[test]
     fn load_returns_none_when_unset() {
         assert_eq!(load_with(env(&[])), Ok(None));
-        assert_eq!(
-            load_with(env(&[("ICLOUD_USERNAME", " "), ("ICLOUD_PASSWORD", "")])),
-            Ok(None)
-        );
+        assert_eq!(load_with(env(&[("ICLOUD_USERNAME", " "), ("ICLOUD_PASSWORD", "")])), Ok(None));
     }
 
     #[test]
@@ -208,29 +184,21 @@ mod tests {
 
     #[test]
     fn load_validates_format_without_echoing_values() {
-        let err = load_with(env(&[
-            ("ICLOUD_USERNAME", "user"),
-            ("ICLOUD_PASSWORD", "abcd-efgh-ijkl-mnop"),
-        ]))
-        .unwrap_err();
+        let err =
+            load_with(env(&[("ICLOUD_USERNAME", "user"), ("ICLOUD_PASSWORD", "abcd-efgh-ijkl-mnop")])).unwrap_err();
         assert!(err.to_string().contains("expected email address"));
-        let err = load_with(env(&[
-            ("ICLOUD_USERNAME", "user@icloud.com"),
-            ("ICLOUD_PASSWORD", "short-secret"),
-        ]))
-        .unwrap_err();
+        let err =
+            load_with(env(&[("ICLOUD_USERNAME", "user@icloud.com"), ("ICLOUD_PASSWORD", "short-secret")])).unwrap_err();
         assert!(err.to_string().contains("Password too short"));
         assert!(!err.to_string().contains("short-secret"));
     }
 
     #[test]
     fn load_accepts_valid_credentials() {
-        let creds = load_with(env(&[
-            ("ICLOUD_USERNAME", "user@icloud.com"),
-            ("ICLOUD_PASSWORD", "abcd-efgh-ijkl-mnop"),
-        ]))
-        .unwrap()
-        .unwrap();
+        let creds =
+            load_with(env(&[("ICLOUD_USERNAME", "user@icloud.com"), ("ICLOUD_PASSWORD", "abcd-efgh-ijkl-mnop")]))
+                .unwrap()
+                .unwrap();
         assert_eq!(creds.username, "user@icloud.com");
         assert_eq!(creds.password, "abcd-efgh-ijkl-mnop");
     }
@@ -239,10 +207,7 @@ mod tests {
     fn is_configured_requires_both() {
         assert!(!is_configured_with(env(&[])));
         assert!(!is_configured_with(env(&[("ICLOUD_USERNAME", "u@x.com")])));
-        assert!(is_configured_with(env(&[
-            ("ICLOUD_USERNAME", "u@x.com"),
-            ("ICLOUD_PASSWORD", "p")
-        ])));
+        assert!(is_configured_with(env(&[("ICLOUD_USERNAME", "u@x.com"), ("ICLOUD_PASSWORD", "p")])));
         // The process-env variant just has to answer.
         let _ = is_configured();
     }

@@ -23,11 +23,7 @@ impl Queue {
 
 impl Respond for Queue {
     fn respond(&self, _: &Request) -> ResponseTemplate {
-        self.0
-            .lock()
-            .unwrap()
-            .pop_front()
-            .unwrap_or_else(|| ResponseTemplate::new(404))
+        self.0.lock().unwrap().pop_front().unwrap_or_else(|| ResponseTemplate::new(404))
     }
 }
 
@@ -40,10 +36,7 @@ impl Harness {
     async fn start() -> Self {
         let server = MockServer::start().await;
         let queue = Queue::default();
-        Mock::given(any())
-            .respond_with(queue.clone())
-            .mount(&server)
-            .await;
+        Mock::given(any()).respond_with(queue.clone()).mount(&server).await;
         Self { server, queue }
     }
 
@@ -74,10 +67,7 @@ impl Harness {
             self.base_url(),
             CalDavCredentials::new("test@icloud.com", "test-password"),
             builder().build().unwrap(),
-            builder()
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .unwrap(),
+            builder().redirect(reqwest::redirect::Policy::none()).build().unwrap(),
         )
     }
 
@@ -176,9 +166,7 @@ const GETETAG_PROPFIND: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 </D:multistatus>"#;
 
 fn ics(uid: &str) -> String {
-    format!(
-        "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:{uid}\nSUMMARY:Test\nEND:VEVENT\nEND:VCALENDAR"
-    )
+    format!("BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:{uid}\nSUMMARY:Test\nEND:VEVENT\nEND:VCALENDAR")
 }
 
 fn etag_multistatus(href: &str, etag: &str) -> String {
@@ -288,10 +276,7 @@ async fn list_calendars_returns_cached_result_on_second_call() {
 
     client.list_calendars().await.unwrap();
     assert_eq!(h.request_count().await, 3);
-    assert_eq!(
-        client.calendar_home_set().as_deref(),
-        Some("/123/calendars/")
-    );
+    assert_eq!(client.calendar_home_set().as_deref(), Some("/123/calendars/"));
 }
 
 #[tokio::test]
@@ -318,13 +303,7 @@ async fn list_calendars_aggregates_from_multiple_home_sets() {
 
     let calendars = h.client().list_calendars().await.unwrap();
 
-    assert_eq!(
-        calendars
-            .iter()
-            .map(|c| c.display_name.as_str())
-            .collect::<Vec<_>>(),
-        ["Home", "Team"]
-    );
+    assert_eq!(calendars.iter().map(|c| c.display_name.as_str()).collect::<Vec<_>>(), ["Home", "Team"]);
 }
 
 #[tokio::test]
@@ -489,10 +468,7 @@ async fn well_known_detects_redirect_loop_and_gives_up() {
 async fn well_known_stops_after_max_hops() {
     let h = Harness::start().await;
     for hop in 0..5 {
-        h.enqueue(
-            ResponseTemplate::new(302)
-                .insert_header("Location", h.url(&format!("/hop{hop}/")).as_str()),
-        );
+        h.enqueue(ResponseTemplate::new(302).insert_header("Location", h.url(&format!("/hop{hop}/")).as_str()));
     }
     h.enqueue_discovery();
 
@@ -534,11 +510,7 @@ async fn get_events_returns_events_in_date_range() {
         ),
     );
 
-    let events = h
-        .client()
-        .get_events("home", "2025-01-01", "2025-01-31")
-        .await
-        .unwrap();
+    let events = h.client().get_events("home", "2025-01-01", "2025-01-31").await.unwrap();
 
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].uid, "event1@test");
@@ -549,10 +521,7 @@ async fn get_events_returns_events_in_date_range() {
     assert_eq!(report.method.as_str(), "REPORT");
     assert_eq!(report.url.path(), "/123/calendars/home/");
     assert_eq!(header(report, "Depth"), Some("1"));
-    assert_eq!(
-        header(report, "Content-Type"),
-        Some("application/xml; charset=utf-8")
-    );
+    assert_eq!(header(report, "Content-Type"), Some("application/xml; charset=utf-8"));
     let report_body = body(report);
     assert!(report_body.contains(r#"start="20250101T000000Z" end="20250131T235959Z""#));
     assert!(report_body.contains("calendar-data"));
@@ -564,13 +533,7 @@ async fn get_events_returns_empty_list_for_no_events() {
     h.enqueue_discovery();
     h.enqueue_xml(207, EMPTY_MULTISTATUS);
 
-    assert!(
-        h.client()
-            .get_events("home", "2025-01-01", "2025-01-31")
-            .await
-            .unwrap()
-            .is_empty()
-    );
+    assert!(h.client().get_events("home", "2025-01-01", "2025-01-31").await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -578,11 +541,7 @@ async fn get_events_returns_not_found_for_unknown_calendar() {
     let h = Harness::start().await;
     h.enqueue_discovery();
 
-    let error = h
-        .client()
-        .get_events("nonexistent", "2025-01-01", "2025-01-31")
-        .await
-        .unwrap_err();
+    let error = h.client().get_events("nonexistent", "2025-01-01", "2025-01-31").await.unwrap_err();
 
     assert!(error.is_not_found());
 }
@@ -592,17 +551,11 @@ async fn get_events_rejects_invalid_dates_before_any_request() {
     let h = Harness::start().await;
     let client = h.client();
 
-    let error = client
-        .get_events("home", "not-a-date", "2025-01-31")
-        .await
-        .unwrap_err();
+    let error = client.get_events("home", "not-a-date", "2025-01-31").await.unwrap_err();
     assert_eq!(error.code, 400);
     assert!(error.message.contains("Invalid"));
 
-    let error = client
-        .get_events("home", "2025-01-01", "2025<script>")
-        .await
-        .unwrap_err();
+    let error = client.get_events("home", "2025-01-01", "2025<script>").await.unwrap_err();
     assert_eq!(error.code, 400);
 
     assert_eq!(h.request_count().await, 0);
@@ -614,17 +567,9 @@ async fn get_events_rejects_invalid_dates_before_any_request() {
 async fn get_event_fetches_uid_and_etag_from_header() {
     let h = Harness::start().await;
     let ics = ics("solo@test");
-    h.enqueue(
-        ResponseTemplate::new(200)
-            .insert_header("ETag", "\"solo-etag\"")
-            .set_body_string(ics.as_str()),
-    );
+    h.enqueue(ResponseTemplate::new(200).insert_header("ETag", "\"solo-etag\"").set_body_string(ics.as_str()));
 
-    let event = h
-        .client()
-        .get_event("/123/calendars/home/solo.ics")
-        .await
-        .unwrap();
+    let event = h.client().get_event("/123/calendars/home/solo.ics").await.unwrap();
 
     assert_eq!(event.uid, "solo@test");
     assert_eq!(event.etag.as_deref(), Some("solo-etag"));
@@ -638,16 +583,9 @@ async fn get_event_fetches_uid_and_etag_from_header() {
 async fn get_event_falls_back_to_propfind_without_etag_header() {
     let h = Harness::start().await;
     h.enqueue(ResponseTemplate::new(200).set_body_string(ics("noetag@test").as_str()));
-    h.enqueue_xml(
-        207,
-        &etag_multistatus("/123/calendars/home/noetag.ics", "\"probed-etag\""),
-    );
+    h.enqueue_xml(207, &etag_multistatus("/123/calendars/home/noetag.ics", "\"probed-etag\""));
 
-    let event = h
-        .client()
-        .get_event("/123/calendars/home/noetag.ics")
-        .await
-        .unwrap();
+    let event = h.client().get_event("/123/calendars/home/noetag.ics").await.unwrap();
 
     assert_eq!(event.uid, "noetag@test");
     assert_eq!(event.etag.as_deref(), Some("probed-etag"));
@@ -658,11 +596,7 @@ async fn get_event_returns_not_found_when_gone() {
     let h = Harness::start().await;
     h.enqueue_status(404);
 
-    let error = h
-        .client()
-        .get_event("/123/calendars/home/missing.ics")
-        .await
-        .unwrap_err();
+    let error = h.client().get_event("/123/calendars/home/missing.ics").await.unwrap_err();
 
     assert!(error.is_not_found());
 }
@@ -671,9 +605,7 @@ async fn get_event_returns_not_found_when_gone() {
 async fn get_event_without_uid_is_not_found() {
     let h = Harness::start().await;
     h.enqueue(
-        ResponseTemplate::new(200)
-            .insert_header("ETag", "\"e\"")
-            .set_body_string("BEGIN:VCALENDAR\nEND:VCALENDAR"),
+        ResponseTemplate::new(200).insert_header("ETag", "\"e\"").set_body_string("BEGIN:VCALENDAR\nEND:VCALENDAR"),
     );
 
     let error = h.client().get_event("/cal/x.ics").await.unwrap_err();
@@ -685,17 +617,9 @@ async fn get_event_without_uid_is_not_found() {
 #[tokio::test]
 async fn get_event_normalizes_regional_href() {
     let h = Harness::start().await;
-    h.enqueue(
-        ResponseTemplate::new(200)
-            .insert_header("ETag", "\"e\"")
-            .set_body_string(ics("p@test").as_str()),
-    );
+    h.enqueue(ResponseTemplate::new(200).insert_header("ETag", "\"e\"").set_body_string(ics("p@test").as_str()));
 
-    let event = h
-        .client()
-        .get_event("/123/calendars/home/p.ics")
-        .await
-        .unwrap();
+    let event = h.client().get_event("/123/calendars/home/p.ics").await.unwrap();
 
     assert_eq!(event.url, h.url("/123/calendars/home/p.ics"));
 }
@@ -708,11 +632,7 @@ async fn create_event_returns_created_event_with_etag() {
     h.enqueue_discovery();
     h.enqueue(ResponseTemplate::new(201).insert_header("ETag", "\"new-etag-123\""));
 
-    let event = h
-        .client()
-        .create_event("home", &ics("new-event@test"))
-        .await
-        .unwrap();
+    let event = h.client().create_event("home", &ics("new-event@test")).await.unwrap();
 
     assert_eq!(event.uid, "new-event@test");
     assert_eq!(event.etag.as_deref(), Some("new-etag-123"));
@@ -721,10 +641,7 @@ async fn create_event_returns_created_event_with_etag() {
 
     let put = &h.requests().await[3];
     assert_eq!(put.method.as_str(), "PUT");
-    assert_eq!(
-        header(put, "Content-Type"),
-        Some("text/calendar; charset=utf-8")
-    );
+    assert_eq!(header(put, "Content-Type"), Some("text/calendar; charset=utf-8"));
     assert_eq!(header(put, "If-None-Match"), Some("*"));
     assert_eq!(put.url.path(), event.href);
 }
@@ -735,11 +652,7 @@ async fn create_event_handles_conflict() {
     h.enqueue_discovery();
     h.enqueue_status(412);
 
-    let error = h
-        .client()
-        .create_event("home", &ics("existing@test"))
-        .await
-        .unwrap_err();
+    let error = h.client().create_event("home", &ics("existing@test")).await.unwrap_err();
 
     assert_eq!(error.code, 412);
 }
@@ -749,11 +662,7 @@ async fn create_event_rejects_ics_without_uid() {
     let h = Harness::start().await;
     h.enqueue_discovery();
 
-    let error = h
-        .client()
-        .create_event("home", "BEGIN:VCALENDAR\nEND:VCALENDAR")
-        .await
-        .unwrap_err();
+    let error = h.client().create_event("home", "BEGIN:VCALENDAR\nEND:VCALENDAR").await.unwrap_err();
 
     assert_eq!(error.code, 400);
     assert_eq!(h.request_count().await, 3);
@@ -764,11 +673,7 @@ async fn create_event_in_unknown_calendar_is_not_found() {
     let h = Harness::start().await;
     h.enqueue_discovery();
 
-    let error = h
-        .client()
-        .create_event("missing", &ics("x@test"))
-        .await
-        .unwrap_err();
+    let error = h.client().create_event("missing", &ics("x@test")).await.unwrap_err();
 
     assert!(error.is_not_found());
 }
@@ -778,16 +683,9 @@ async fn create_event_falls_back_to_propfind_without_etag() {
     let h = Harness::start().await;
     h.enqueue_discovery();
     h.enqueue_status(201);
-    h.enqueue_xml(
-        207,
-        &etag_multistatus("/123/calendars/home/event.ics", "\"fallback-etag-123\""),
-    );
+    h.enqueue_xml(207, &etag_multistatus("/123/calendars/home/event.ics", "\"fallback-etag-123\""));
 
-    let event = h
-        .client()
-        .create_event("home", &ics("new@test"))
-        .await
-        .unwrap();
+    let event = h.client().create_event("home", &ics("new@test")).await.unwrap();
 
     assert_eq!(event.etag.as_deref(), Some("fallback-etag-123"));
     let probe = &h.requests().await[4];
@@ -807,11 +705,7 @@ async fn create_event_has_no_etag_when_put_and_propfind_both_miss() {
 <D:propstat><D:prop></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>"#,
     );
 
-    let event = h
-        .client()
-        .create_event("home", &ics("no-etag@test"))
-        .await
-        .unwrap();
+    let event = h.client().create_event("home", &ics("no-etag@test")).await.unwrap();
 
     assert_eq!(event.etag, None);
 }
@@ -823,11 +717,7 @@ async fn create_event_has_no_etag_when_propfind_fails() {
     h.enqueue_status(201);
     h.enqueue_status(500);
 
-    let event = h
-        .client()
-        .create_event("home", &ics("fail@test"))
-        .await
-        .unwrap();
+    let event = h.client().create_event("home", &ics("fail@test")).await.unwrap();
 
     assert_eq!(event.etag, None);
 }
@@ -841,11 +731,7 @@ async fn update_event_returns_new_etag_and_sends_if_match() {
 
     let event = h
         .client()
-        .update_event(
-            "/123/calendars/home/event1.ics",
-            &ics("event1@test"),
-            Some("\"old-etag\""),
-        )
+        .update_event("/123/calendars/home/event1.ics", &ics("event1@test"), Some("\"old-etag\""))
         .await
         .unwrap();
 
@@ -862,11 +748,7 @@ async fn update_event_handles_stale_etag() {
     let h = Harness::start().await;
     h.enqueue_status(412);
 
-    let error = h
-        .client()
-        .update_event("/cal/event.ics", &ics("test@test"), Some("\"stale\""))
-        .await
-        .unwrap_err();
+    let error = h.client().update_event("/cal/event.ics", &ics("test@test"), Some("\"stale\"")).await.unwrap_err();
 
     assert_eq!(error.code, 412);
     assert!(error.is_conflict());
@@ -878,11 +760,7 @@ async fn update_event_handles_404() {
     h.enqueue_status(404); // ETag probe
     h.enqueue_status(404); // PUT
 
-    let error = h
-        .client()
-        .update_event("/cal/missing.ics", &ics("test@test"), None)
-        .await
-        .unwrap_err();
+    let error = h.client().update_event("/cal/missing.ics", &ics("test@test"), None).await.unwrap_err();
 
     assert!(error.is_not_found());
 }
@@ -891,11 +769,7 @@ async fn update_event_handles_404() {
 async fn update_event_rejects_ics_without_uid_before_any_request() {
     let h = Harness::start().await;
 
-    let error = h
-        .client()
-        .update_event("/cal/x.ics", "BEGIN:VCALENDAR\nEND:VCALENDAR", None)
-        .await
-        .unwrap_err();
+    let error = h.client().update_event("/cal/x.ics", "BEGIN:VCALENDAR\nEND:VCALENDAR", None).await.unwrap_err();
 
     assert_eq!(error.code, 400);
     assert_eq!(h.request_count().await, 0);
@@ -907,11 +781,7 @@ async fn update_event_with_null_etag_recovers_via_propfind() {
     h.enqueue_xml(207, GETETAG_PROPFIND);
     h.enqueue(ResponseTemplate::new(204).insert_header("ETag", "\"new-etag\""));
 
-    let event = h
-        .client()
-        .update_event("/cal/event.ics", &ics("e@t"), None)
-        .await
-        .unwrap();
+    let event = h.client().update_event("/cal/event.ics", &ics("e@t"), None).await.unwrap();
 
     assert_eq!(event.etag.as_deref(), Some("new-etag"));
     let requests = h.requests().await;
@@ -926,10 +796,7 @@ async fn update_event_with_etag_skips_propfind_probe() {
     let h = Harness::start().await;
     h.enqueue(ResponseTemplate::new(204).insert_header("ETag", "\"new-etag\""));
 
-    h.client()
-        .update_event("/cal/event.ics", &ics("e@t"), Some("\"caller-etag\""))
-        .await
-        .unwrap();
+    h.client().update_event("/cal/event.ics", &ics("e@t"), Some("\"caller-etag\"")).await.unwrap();
 
     assert_eq!(h.request_count().await, 1);
 }
@@ -940,10 +807,7 @@ async fn update_event_without_recoverable_etag_puts_unconditionally() {
     h.enqueue_status(500); // probe fails
     h.enqueue(ResponseTemplate::new(204).insert_header("ETag", "\"new-etag\""));
 
-    h.client()
-        .update_event("/cal/event.ics", &ics("e@t"), None)
-        .await
-        .unwrap();
+    h.client().update_event("/cal/event.ics", &ics("e@t"), None).await.unwrap();
 
     let requests = h.requests().await;
     assert_eq!(requests[1].method.as_str(), "PUT");
@@ -954,16 +818,9 @@ async fn update_event_without_recoverable_etag_puts_unconditionally() {
 async fn update_event_falls_back_to_propfind_when_put_has_no_etag() {
     let h = Harness::start().await;
     h.enqueue_status(204);
-    h.enqueue_xml(
-        207,
-        &etag_multistatus("/cal/event.ics", "\"update-fallback\""),
-    );
+    h.enqueue_xml(207, &etag_multistatus("/cal/event.ics", "\"update-fallback\""));
 
-    let event = h
-        .client()
-        .update_event("/cal/event.ics", &ics("upd@test"), Some("\"old\""))
-        .await
-        .unwrap();
+    let event = h.client().update_event("/cal/event.ics", &ics("upd@test"), Some("\"old\"")).await.unwrap();
 
     assert_eq!(event.etag.as_deref(), Some("update-fallback"));
 }
@@ -974,11 +831,7 @@ async fn update_event_accepts_absolute_url() {
     h.enqueue(ResponseTemplate::new(204).insert_header("ETag", "\"n\""));
     let url = h.url("/abs/event.ics");
 
-    let event = h
-        .client()
-        .update_event(&url, &ics("a@t"), Some("e"))
-        .await
-        .unwrap();
+    let event = h.client().update_event(&url, &ics("a@t"), Some("e")).await.unwrap();
 
     assert_eq!(event.url, url);
     assert_eq!(h.requests().await[0].url.path(), "/abs/event.ics");
@@ -991,10 +844,7 @@ async fn delete_event_sends_if_match() {
     let h = Harness::start().await;
     h.enqueue_status(204);
 
-    h.client()
-        .delete_event("/cal/event.ics", Some("\"etag\""))
-        .await
-        .unwrap();
+    h.client().delete_event("/cal/event.ics", Some("\"etag\"")).await.unwrap();
 
     let requests = h.requests().await;
     assert_eq!(requests[0].method.as_str(), "DELETE");
@@ -1007,10 +857,7 @@ async fn delete_event_without_etag_still_works() {
     h.enqueue_status(404); // probe finds nothing
     h.enqueue_status(204);
 
-    h.client()
-        .delete_event("/cal/event.ics", None)
-        .await
-        .unwrap();
+    h.client().delete_event("/cal/event.ics", None).await.unwrap();
 
     let requests = h.requests().await;
     assert_eq!(requests[1].method.as_str(), "DELETE");
@@ -1023,12 +870,7 @@ async fn delete_event_treats_404_as_success() {
     h.enqueue_status(404);
     h.enqueue_status(404);
 
-    assert!(
-        h.client()
-            .delete_event("/cal/missing.ics", None)
-            .await
-            .is_ok()
-    );
+    assert!(h.client().delete_event("/cal/missing.ics", None).await.is_ok());
 }
 
 #[tokio::test]
@@ -1036,11 +878,7 @@ async fn delete_event_handles_conflict() {
     let h = Harness::start().await;
     h.enqueue_status(412);
 
-    let error = h
-        .client()
-        .delete_event("/cal/event.ics", Some("\"wrong\""))
-        .await
-        .unwrap_err();
+    let error = h.client().delete_event("/cal/event.ics", Some("\"wrong\"")).await.unwrap_err();
 
     assert_eq!(error.code, 412);
 }
@@ -1051,10 +889,7 @@ async fn delete_event_with_null_etag_recovers_via_propfind() {
     h.enqueue_xml(207, GETETAG_PROPFIND);
     h.enqueue_status(204);
 
-    h.client()
-        .delete_event("/cal/event.ics", None)
-        .await
-        .unwrap();
+    h.client().delete_event("/cal/event.ics", None).await.unwrap();
 
     let requests = h.requests().await;
     assert_eq!(requests[0].method.as_str(), "PROPFIND");
@@ -1122,10 +957,7 @@ async fn retries_429_honoring_retry_after() {
     let _ = h.client().list_calendars().await;
     let elapsed = start.elapsed();
 
-    assert!(
-        elapsed >= Duration::from_millis(900),
-        "expected >= 900ms, got {elapsed:?}"
-    );
+    assert!(elapsed >= Duration::from_millis(900), "expected >= 900ms, got {elapsed:?}");
     assert!(h.request_count().await >= 2);
 }
 
@@ -1165,11 +997,7 @@ async fn success_resets_failure_count() {
         h.enqueue_status(403);
         let _ = client.get_event("/cal/x.ics").await;
     }
-    h.enqueue(
-        ResponseTemplate::new(200)
-            .insert_header("ETag", "\"e\"")
-            .set_body_string(ics("ok@t").as_str()),
-    );
+    h.enqueue(ResponseTemplate::new(200).insert_header("ETag", "\"e\"").set_body_string(ics("ok@t").as_str()));
     client.get_event("/cal/x.ics").await.unwrap();
     for _ in 0..4 {
         h.enqueue_status(403);
@@ -1202,11 +1030,7 @@ async fn read_timeout_is_classified_as_timeout() {
     let client = HttpCalDavClient::with_clients(
         h.base_url(),
         CalDavCredentials::new("u@icloud.com", "p"),
-        reqwest::Client::builder()
-            .no_proxy()
-            .timeout(Duration::from_millis(200))
-            .build()
-            .unwrap(),
+        reqwest::Client::builder().no_proxy().timeout(Duration::from_millis(200)).build().unwrap(),
         reqwest::Client::builder().no_proxy().build().unwrap(),
     );
     client.skip_well_known_discovery();
@@ -1228,11 +1052,7 @@ async fn response_under_limit_is_read_normally() {
     let result = h.client().list_calendars().await;
 
     if let Err(error) = result {
-        assert!(
-            !error.message.contains("too large"),
-            "1MB body tripped the limit: {}",
-            error.message
-        );
+        assert!(!error.message.contains("too large"), "1MB body tripped the limit: {}", error.message);
     }
 }
 
@@ -1252,11 +1072,7 @@ async fn oversized_write_response_is_rejected() {
     let h = Harness::start().await;
     h.enqueue_xml(201, &"x".repeat(3_000_001));
 
-    let error = h
-        .client()
-        .update_event("/cal/event.ics", &ics("test@test"), Some("\"etag\""))
-        .await
-        .unwrap_err();
+    let error = h.client().update_event("/cal/event.ics", &ics("test@test"), Some("\"etag\"")).await.unwrap_err();
 
     assert_eq!(error.code, 413);
     assert!(error.message.contains("too large"));
@@ -1307,21 +1123,11 @@ async fn fetch_etags_returns_href_to_etag_map() {
 </D:multistatus>"#,
     );
 
-    let etags = h
-        .client()
-        .fetch_etags("home", "2025-01-01", "2025-01-31")
-        .await
-        .unwrap();
+    let etags = h.client().fetch_etags("home", "2025-01-01", "2025-01-31").await.unwrap();
 
     assert_eq!(etags.len(), 2);
-    assert_eq!(
-        etags["/123/calendars/home/event1.ics"].as_deref(),
-        Some("etag-1")
-    );
-    assert_eq!(
-        etags["/123/calendars/home/event2.ics"].as_deref(),
-        Some("etag-2")
-    );
+    assert_eq!(etags["/123/calendars/home/event1.ics"].as_deref(), Some("etag-1"));
+    assert_eq!(etags["/123/calendars/home/event2.ics"].as_deref(), Some("etag-2"));
     let report = h.requests().await.pop().unwrap();
     assert_eq!(report.method.as_str(), "REPORT");
     assert!(!body(&report).contains("calendar-data"));
@@ -1331,11 +1137,7 @@ async fn fetch_etags_returns_href_to_etag_map() {
 async fn fetch_etags_validates_date_format() {
     let h = Harness::start().await;
 
-    let error = h
-        .client()
-        .fetch_etags("home", "bad-date", "2025-01-31")
-        .await
-        .unwrap_err();
+    let error = h.client().fetch_etags("home", "bad-date", "2025-01-31").await.unwrap_err();
 
     assert_eq!(error.code, 400);
     assert_eq!(h.request_count().await, 0);

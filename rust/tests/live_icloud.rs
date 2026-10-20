@@ -27,7 +27,9 @@ const TEST_PREFIX: &str = "MCP-LIVE:";
 
 fn credentials() -> Option<CalDavCredentials> {
     let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
-    if let (Some(user), Some(pass)) = (env("ICLOUD_USERNAME"), env("ICLOUD_PASSWORD").or_else(|| env("ICLOUD_APP_PASSWORD"))) {
+    if let (Some(user), Some(pass)) =
+        (env("ICLOUD_USERNAME"), env("ICLOUD_PASSWORD").or_else(|| env("ICLOUD_APP_PASSWORD")))
+    {
         return Some(CalDavCredentials::new(user, pass));
     }
     for path in ["local.properties", "../local.properties"] {
@@ -39,7 +41,9 @@ fn credentials() -> Option<CalDavCredentials> {
                 .map(|(_, v)| v.trim().to_string())
                 .filter(|v| !v.is_empty())
         };
-        if let (Some(user), Some(pass)) = (prop("ICLOUD_USERNAME"), prop("ICLOUD_APP_PASSWORD").or_else(|| prop("ICLOUD_PASSWORD"))) {
+        if let (Some(user), Some(pass)) =
+            (prop("ICLOUD_USERNAME"), prop("ICLOUD_APP_PASSWORD").or_else(|| prop("ICLOUD_PASSWORD")))
+        {
             return Some(CalDavCredentials::new(user, pass));
         }
     }
@@ -76,7 +80,11 @@ impl Live {
     }
 
     async fn occurrences(&self, uid: &str, from: chrono::NaiveDate, to: chrono::NaiveDate) -> Vec<EventInfo> {
-        let events = self.service.get_events(&self.calendar_id, &from.to_string(), &to.to_string()).await.expect("get_events succeeds");
+        let events = self
+            .service
+            .get_events(&self.calendar_id, &from.to_string(), &to.to_string())
+            .await
+            .expect("get_events succeeds");
         events.into_iter().filter(|e| e.uid == uid).collect()
     }
 
@@ -84,7 +92,11 @@ impl Live {
     async fn raw_ics(&self, uid: &str, anchor: chrono::NaiveDate) -> Option<String> {
         let client = new_client(&self.creds);
         let events = client
-            .get_events(&self.calendar_id, &(anchor - Duration::days(1)).to_string(), &(anchor + Duration::days(1)).to_string())
+            .get_events(
+                &self.calendar_id,
+                &(anchor - Duration::days(1)).to_string(),
+                &(anchor + Duration::days(1)).to_string(),
+            )
             .await
             .ok()?;
         events.into_iter().find(|e| e.uid == uid).map(|e| e.ical_data)
@@ -341,7 +353,10 @@ async fn scoped_edit_and_delete_of_occurrences() {
             end_time: Some(second.end_time.clone().unwrap().replace("T09:30", "T14:30")),
             ..EventPatch::default()
         };
-        live.service.update_event(second.handle.as_deref().unwrap(), patch, Some(EventScope::ThisOccurrence)).await.unwrap();
+        live.service
+            .update_event(second.handle.as_deref().unwrap(), patch, Some(EventScope::ThisOccurrence))
+            .await
+            .unwrap();
 
         let third = on(&before, start + Duration::days(2));
         live.service.delete_event(third.handle.as_deref().unwrap(), Some(EventScope::ThisOccurrence)).await.unwrap();
@@ -367,7 +382,11 @@ async fn this_and_future_edit_splits_the_series() {
         let pivot = before.iter().find(|o| o.start_time.as_deref().unwrap().starts_with(&pivot_day)).unwrap();
 
         let patch = EventPatch { summary: Some(Live::prefixed("split series (onward)")), ..EventPatch::default() };
-        let split = live.service.update_event(pivot.handle.as_deref().unwrap(), patch, Some(EventScope::ThisAndFuture)).await.unwrap();
+        let split = live
+            .service
+            .update_event(pivot.handle.as_deref().unwrap(), patch, Some(EventScope::ThisAndFuture))
+            .await
+            .unwrap();
         live.track(split.handle.as_deref().unwrap());
         assert_ne!(split.uid, created.uid);
 

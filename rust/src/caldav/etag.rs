@@ -71,10 +71,7 @@ mod tests {
 
     #[test]
     fn icloud_style_long_etag() {
-        assert_eq!(
-            norm("\"C=123@U=456-789\"").as_deref(),
-            Some("C=123@U=456-789")
-        );
+        assert_eq!(norm("\"C=123@U=456-789\"").as_deref(), Some("C=123@U=456-789"));
     }
 
     #[test]

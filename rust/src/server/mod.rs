@@ -74,13 +74,21 @@ impl CalendarServer {
     /// (60 reads and 20 writes per minute).
     pub fn new(service: Option<Arc<CalendarService>>) -> Self {
         let sink = Arc::new(PeerLogSink::default());
-        let mut server = Self::with_parts(service, Arc::new(RateLimiter::new(60, 20, 60_000)), Arc::new(McpLogger::new(sink.clone())));
+        let mut server = Self::with_parts(
+            service,
+            Arc::new(RateLimiter::new(60, 20, 60_000)),
+            Arc::new(McpLogger::new(sink.clone())),
+        );
         server.peer_sink = Some(sink);
         server
     }
 
     /// A server over explicit parts, for tests.
-    pub fn with_parts(service: Option<Arc<CalendarService>>, rate_limiter: Arc<RateLimiter>, logger: Arc<McpLogger>) -> Self {
+    pub fn with_parts(
+        service: Option<Arc<CalendarService>>,
+        rate_limiter: Arc<RateLimiter>,
+        logger: Arc<McpLogger>,
+    ) -> Self {
         Self { service, rate_limiter, logger, peer_sink: None }
     }
 
@@ -96,7 +104,11 @@ impl CalendarServer {
 
     /// Run the tool `name`. Unknown tools are a protocol error; everything a
     /// tool itself can hit, including a panic, becomes an error result.
-    pub async fn call_tool_by_name(&self, name: &str, arguments: Option<Map<String, Value>>) -> Result<CallToolResult, ErrorData> {
+    pub async fn call_tool_by_name(
+        &self,
+        name: &str,
+        arguments: Option<Map<String, Value>>,
+    ) -> Result<CallToolResult, ErrorData> {
         let args = arguments.unwrap_or_default();
         let call = async {
             match name {
@@ -141,7 +153,10 @@ impl CalendarServer {
                 None,
             ));
         }
-        let service = self.service.as_ref().ok_or_else(|| ErrorData::new(ErrorCode(-32001), "iCloud credentials not configured", None))?;
+        let service = self
+            .service
+            .as_ref()
+            .ok_or_else(|| ErrorData::new(ErrorCode(-32001), "iCloud credentials not configured", None))?;
         let calendars = service
             .list_calendars()
             .await
@@ -180,7 +195,11 @@ impl ServerHandler for CalendarServer {
             .with_server_info(Implementation::new("icloud-calendar-mcp", env!("CARGO_PKG_VERSION")))
     }
 
-    async fn initialize(&self, request: InitializeRequestParams, context: RequestContext<RoleServer>) -> Result<InitializeResult, ErrorData> {
+    async fn initialize(
+        &self,
+        request: InitializeRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<InitializeResult, ErrorData> {
         context.peer.set_peer_info(request.clone());
         self.remember_peer(&context.peer);
         self.negotiate_initialize(&request)
@@ -190,35 +209,63 @@ impl ServerHandler for CalendarServer {
         self.remember_peer(&context.peer);
     }
 
-    async fn set_level(&self, request: SetLevelRequestParams, context: RequestContext<RoleServer>) -> Result<(), ErrorData> {
+    async fn set_level(
+        &self,
+        request: SetLevelRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<(), ErrorData> {
         self.remember_peer(&context.peer);
         self.logger.set_level(request.level);
         Ok(())
     }
 
-    async fn list_tools(&self, _request: Option<PaginatedRequestParams>, _context: RequestContext<RoleServer>) -> Result<ListToolsResult, ErrorData> {
+    async fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, ErrorData> {
         Ok(ListToolsResult::with_all_items(tools::definitions()))
     }
 
-    async fn call_tool(&self, request: CallToolRequestParams, context: RequestContext<RoleServer>) -> Result<CallToolResponse, ErrorData> {
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResponse, ErrorData> {
         self.remember_peer(&context.peer);
         self.call_tool_by_name(&request.name, request.arguments).await.map(CallToolResponse::from)
     }
 
-    async fn list_resources(&self, _request: Option<PaginatedRequestParams>, _context: RequestContext<RoleServer>) -> Result<ListResourcesResult, ErrorData> {
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, ErrorData> {
         Ok(ListResourcesResult::with_all_items(Self::resources()))
     }
 
-    async fn read_resource(&self, request: ReadResourceRequestParams, context: RequestContext<RoleServer>) -> Result<ReadResourceResponse, ErrorData> {
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParams,
+        context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResponse, ErrorData> {
         self.remember_peer(&context.peer);
         self.read_resource_uri(&request.uri).await.map(ReadResourceResponse::from)
     }
 
-    async fn list_prompts(&self, _request: Option<PaginatedRequestParams>, _context: RequestContext<RoleServer>) -> Result<ListPromptsResult, ErrorData> {
+    async fn list_prompts(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, ErrorData> {
         Ok(ListPromptsResult::with_all_items(prompts::definitions()))
     }
 
-    async fn get_prompt(&self, request: GetPromptRequestParams, _context: RequestContext<RoleServer>) -> Result<GetPromptResponse, ErrorData> {
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResponse, ErrorData> {
         prompts::render(&request.name, request.arguments.as_ref())
             .map(GetPromptResponse::from)
             .ok_or_else(|| ErrorData::invalid_params(format!("Prompt not found: {}", request.name), None))

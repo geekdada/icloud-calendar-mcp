@@ -51,12 +51,7 @@ impl ContentLine {
             rest = remaining;
         }
         let value = rest.strip_prefix(':')?;
-        Some(ContentLine {
-            name: name.to_ascii_uppercase(),
-            params,
-            value: value.to_string(),
-            raw: line.to_string(),
-        })
+        Some(ContentLine { name: name.to_ascii_uppercase(), params, value: value.to_string(), raw: line.to_string() })
     }
 }
 
@@ -77,10 +72,9 @@ fn lex_param(input: &str) -> Option<(Option<Param>, &str)> {
     }
     let end = end?;
     let text = &input[..end];
-    let param = text.split_once('=').map(|(name, value)| Param {
-        name: name.trim().to_ascii_uppercase(),
-        value: unquote(value),
-    });
+    let param = text
+        .split_once('=')
+        .map(|(name, value)| Param { name: name.trim().to_ascii_uppercase(), value: unquote(value) });
     Some((param, &input[end..]))
 }
 
@@ -172,12 +166,10 @@ pub fn parse_calendar(data: &str) -> Result<Component, ICalError> {
     }
 }
 
-static SHORT_OFFSET: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?m)(TZOFFSETFROM|TZOFFSETTO):([+-])(\d{3})[ \t]*$").expect("valid regex")
-});
-static DAY_DURATION_WITH_T: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?m)^((?:TRIGGER|DURATION)[^:\r\n]*:)(-?)PT(\d+)D[ \t]*$").expect("valid regex")
-});
+static SHORT_OFFSET: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)(TZOFFSETFROM|TZOFFSETTO):([+-])(\d{3})[ \t]*$").expect("valid regex"));
+static DAY_DURATION_WITH_T: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^((?:TRIGGER|DURATION)[^:\r\n]*:)(-?)PT(\d+)D[ \t]*$").expect("valid regex"));
 static DATE_TYPED_TIMESTAMP: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?m)^(DTSTAMP|LAST-MODIFIED|CREATED);VALUE=DATE:(\d{8})[ \t]*$").expect("valid regex")
 });
@@ -296,9 +288,10 @@ mod tests {
 
     #[test]
     fn quoted_params_may_contain_delimiters() {
-        let line =
-            ContentLine::parse(r#"X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE="Apple Park; Cupertino:CA":geo:37.3,-122.0"#)
-                .unwrap();
+        let line = ContentLine::parse(
+            r#"X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE="Apple Park; Cupertino:CA":geo:37.3,-122.0"#,
+        )
+        .unwrap();
         assert_eq!(line.param("X-TITLE"), Some("Apple Park; Cupertino:CA"));
         assert_eq!(line.value, "geo:37.3,-122.0");
     }

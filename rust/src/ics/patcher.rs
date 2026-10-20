@@ -34,7 +34,9 @@ pub enum PatchError {
 impl fmt::Display for PatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PatchError::Unparseable(detail) => write!(f, "Could not patch event: existing ICS is unparseable ({detail})"),
+            PatchError::Unparseable(detail) => {
+                write!(f, "Could not patch event: existing ICS is unparseable ({detail})")
+            }
             PatchError::NotARecurringSeries => {
                 f.write_str("Single-occurrence scope requires a recurring series, but this event has no RRULE/RDATE")
             }
@@ -140,7 +142,11 @@ pub fn patch(existing_ics: Option<&str>, uid: &str, patch: &EventPatch) -> Resul
 /// The exception VEVENT for `recurrence_id` is updated in place, or created
 /// starting at the occurrence's own instant; the master's DTSTART and RRULE
 /// are never touched.
-pub fn patch_occurrence(existing_ics: Option<&str>, recurrence_id: &str, patch: &EventPatch) -> Result<String, PatchError> {
+pub fn patch_occurrence(
+    existing_ics: Option<&str>,
+    recurrence_id: &str,
+    patch: &EventPatch,
+) -> Result<String, PatchError> {
     let (master, overrides) = parse_series(existing_ics)?;
     let recid = normalize_recurrence_id(recurrence_id, &master)?;
     let existing_index = overrides.iter().position(|o| normalized_recid_timestamp(o, &master) == Some(recid.timestamp));
@@ -188,7 +194,11 @@ pub fn truncate_series(existing_ics: Option<&str>, recurrence_id: &str) -> Resul
 /// the master as [`truncate_series`] does, and start a new series (fresh UID)
 /// at the occurrence carrying the remaining recurrence with the patch applied.
 /// Exceptions after the cut move to the new series.
-pub fn split_series(existing_ics: Option<&str>, recurrence_id: &str, patch: &EventPatch) -> Result<SplitResult, PatchError> {
+pub fn split_series(
+    existing_ics: Option<&str>,
+    recurrence_id: &str,
+    patch: &EventPatch,
+) -> Result<SplitResult, PatchError> {
     let (master, overrides) = parse_series(existing_ics)?;
     let recid = normalize_recurrence_id(recurrence_id, &master)?;
     let (new_master, kept) = truncate_master(&master, &overrides, recid.timestamp)?;
@@ -197,13 +207,8 @@ pub fn split_series(existing_ics: Option<&str>, recurrence_id: &str, patch: &Eve
 
     let fresh_uid = format!("{}@onekash-mcp", uuid::Uuid::new_v4());
     let base = new_series_from_occurrence(&master, recid, &fresh_uid)?;
-    let content_only = EventPatch {
-        status: None,
-        url: None,
-        categories: None,
-        priority: None,
-        ..patch.sanitized().occurrence_only()
-    };
+    let content_only =
+        EventPatch { status: None, url: None, categories: None, priority: None, ..patch.sanitized().occurrence_only() };
     let mut new_series = apply_patch(base, &content_only)?;
     new_series.sequence = 0;
 
@@ -222,7 +227,11 @@ pub fn split_series(existing_ics: Option<&str>, recurrence_id: &str, patch: &Eve
 }
 
 /// The capped master for a cut at `target` plus the exceptions before it.
-fn truncate_master(master: &ICalEvent, overrides: &[ICalEvent], target: i64) -> Result<(ICalEvent, Vec<ICalEvent>), PatchError> {
+fn truncate_master(
+    master: &ICalEvent,
+    overrides: &[ICalEvent],
+    target: i64,
+) -> Result<(ICalEvent, Vec<ICalEvent>), PatchError> {
     let kept = occurrence_instants_before(master, target, true)?;
     let Some(&last_kept) = kept.iter().max() else {
         return Err(PatchError::FirstOccurrence);
@@ -240,15 +249,22 @@ fn truncate_master(master: &ICalEvent, overrides: &[ICalEvent], target: i64) -> 
     new_master.rdates.retain(|r| r.timestamp < target);
     new_master.sequence = new_master.sequence.saturating_add(1);
     new_master.last_modified = Some(ICalDateTime::now());
-    let kept_overrides =
-        overrides.iter().filter(|o| normalized_recid_timestamp(o, master).unwrap_or(i64::MAX) < target).cloned().collect();
+    let kept_overrides = overrides
+        .iter()
+        .filter(|o| normalized_recid_timestamp(o, master).unwrap_or(i64::MAX) < target)
+        .cloned()
+        .collect();
     Ok((new_master, kept_overrides))
 }
 
 /// The continuing series: the master at a fresh UID, starting at the
 /// occurrence (DTEND shifted by the master's length), its COUNT reduced by the
 /// occurrences the truncated master keeps, and future EXDATE/RDATE carried.
-fn new_series_from_occurrence(master: &ICalEvent, recid: ICalDateTime, fresh_uid: &str) -> Result<ICalEvent, PatchError> {
+fn new_series_from_occurrence(
+    master: &ICalEvent,
+    recid: ICalDateTime,
+    fresh_uid: &str,
+) -> Result<ICalEvent, PatchError> {
     let target = recid.timestamp;
     let mut series = master.clone();
     series.uid = fresh_uid.to_string();
@@ -278,7 +294,8 @@ fn new_exception_base(master: &ICalEvent, recid: ICalDateTime) -> ICalEvent {
     exception.recurrence_id = Some(recid);
     exception.recurrence_id_range = None;
     exception.dt_start = recid;
-    exception.dt_end = master.dt_end.map(|end| shifted(end, recid.timestamp + (end.timestamp - master.dt_start.timestamp)));
+    exception.dt_end =
+        master.dt_end.map(|end| shifted(end, recid.timestamp + (end.timestamp - master.dt_start.timestamp)));
     exception.duration = if master.dt_end.is_none() { master.duration } else { None };
     exception.rrule = None;
     exception.rdates = Vec::new();
@@ -459,7 +476,9 @@ mod tests {
 
     #[test]
     fn summary_only_patch_preserves_everything_else() {
-        let out = patch(Some(EXISTING), "orig@icloud", &EventPatch { summary: Some("Renamed".into()), ..Default::default() }).unwrap();
+        let out =
+            patch(Some(EXISTING), "orig@icloud", &EventPatch { summary: Some("Renamed".into()), ..Default::default() })
+                .unwrap();
         let e = only(&out);
         assert_eq!(e.summary.as_deref(), Some("Renamed"));
         assert_eq!(e.description.as_deref(), Some("Keep me"));
@@ -513,9 +532,12 @@ mod tests {
         )
         .unwrap();
         assert!(timed.contains("DTSTART;TZID=Europe/Paris:20250201T090000\r\n"));
-        let all_day =
-            patch(Some(EXISTING), "orig@icloud", &EventPatch { start_date: Some("2025-03-01".into()), ..Default::default() })
-                .unwrap();
+        let all_day = patch(
+            Some(EXISTING),
+            "orig@icloud",
+            &EventPatch { start_date: Some("2025-03-01".into()), ..Default::default() },
+        )
+        .unwrap();
         let e = only(&all_day);
         assert!(e.is_all_day);
         assert_eq!(e.dt_start.to_ical_string(), "20250301");
@@ -548,7 +570,12 @@ mod tests {
         assert_eq!(events[1].dt_start.to_ical_string(), "20250113T100000Z");
         assert_eq!(events[1].summary.as_deref(), Some("Moved"));
 
-        let again = patch_occurrence(Some(&edited), "20250113T100000Z", &EventPatch { location: Some("Here".into()), ..Default::default() }).unwrap();
+        let again = patch_occurrence(
+            Some(&edited),
+            "20250113T100000Z",
+            &EventPatch { location: Some("Here".into()), ..Default::default() },
+        )
+        .unwrap();
         let events = parse_all_events(&again).unwrap();
         assert_eq!(events.len(), 2, "existing exception is updated, not duplicated");
         assert_eq!(events[1].summary.as_deref(), Some("Moved"));
@@ -557,7 +584,12 @@ mod tests {
 
     #[test]
     fn exdate_occurrence_excludes_and_drops_exception() {
-        let edited = patch_occurrence(Some(WEEKLY), "20250113T100000Z", &EventPatch { summary: Some("x".into()), ..Default::default() }).unwrap();
+        let edited = patch_occurrence(
+            Some(WEEKLY),
+            "20250113T100000Z",
+            &EventPatch { summary: Some("x".into()), ..Default::default() },
+        )
+        .unwrap();
         let out = exdate_occurrence(Some(&edited), "20250113T100000Z").unwrap();
         let events = parse_all_events(&out).unwrap();
         assert_eq!(events.len(), 1);
@@ -584,7 +616,12 @@ mod tests {
 
     #[test]
     fn split_creates_continuing_series_with_reduced_count() {
-        let result = split_series(Some(WEEKLY), "20250120T100000Z", &EventPatch { summary: Some("New era".into()), ..Default::default() }).unwrap();
+        let result = split_series(
+            Some(WEEKLY),
+            "20250120T100000Z",
+            &EventPatch { summary: Some("New era".into()), ..Default::default() },
+        )
+        .unwrap();
         let master = only(&result.truncated_master);
         assert_eq!(master.rrule.unwrap().until.unwrap().to_ical_string(), "20250113T100000Z");
         let series = only(&result.new_series);

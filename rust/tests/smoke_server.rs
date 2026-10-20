@@ -26,7 +26,10 @@ async fn create_list_update_delete_round_trip() {
     assert_eq!(created.structured_content.as_ref().unwrap(), &body);
 
     let updated = server
-        .call_tool_by_name("update_event", Some(json!({"event_id": handle, "title": "Daily standup"}).as_object().unwrap().clone()))
+        .call_tool_by_name(
+            "update_event",
+            Some(json!({"event_id": handle, "title": "Daily standup"}).as_object().unwrap().clone()),
+        )
         .await
         .unwrap();
     assert_ne!(updated.is_error, Some(true), "{}", result_text(&updated));

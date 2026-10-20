@@ -33,7 +33,8 @@ const ENGINE: GeneralPurpose = GeneralPurpose::new(
 );
 
 /// `ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) ":"` (RFC 3986 §3.1).
-static SCHEME_PREFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:").expect("valid regex"));
+static SCHEME_PREFIX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9+.\-]*:").expect("valid regex"));
 
 /// A decoded event reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,7 +87,11 @@ impl EventHandle {
         if recurrence_id.trim().is_empty() {
             return None;
         }
-        Some(EventHandle { href: href.to_string(), etag: non_empty(etag), recurrence_id: Some(recurrence_id.to_string()) })
+        Some(EventHandle {
+            href: href.to_string(),
+            etag: non_empty(etag),
+            recurrence_id: Some(recurrence_id.to_string()),
+        })
     }
 }
 

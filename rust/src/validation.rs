@@ -89,10 +89,8 @@ const SSRF_PATTERNS: [&str; 23] = [
     "172.31.",
 ];
 
-const DANGEROUS_PATTERNS: [&str; 19] = [
-    "..", ";", "|", "`", "$(", "${", "<", ">", "\n", "\r", "%00", "\\x00", "*", "?", "[", "{", "^",
-    "$", "+",
-];
+const DANGEROUS_PATTERNS: [&str; 19] =
+    ["..", ";", "|", "`", "$(", "${", "<", ">", "\n", "\r", "%00", "\\x00", "*", "?", "[", "{", "^", "$", "+"];
 
 /// One entry of the `alarms` argument, decoded from JSON at the MCP boundary.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -123,9 +121,7 @@ pub fn validate_date(date: Option<&str>, field_name: &str) -> ValidationResult {
     if !DATE_PATTERN.is_match(date) {
         return Err(format!("{field_name} must be in YYYY-MM-DD format"));
     }
-    parse_local_date(date)
-        .map(|_| ())
-        .ok_or_else(|| format!("{field_name} is not a valid date"))
+    parse_local_date(date).map(|_| ()).ok_or_else(|| format!("{field_name} is not a valid date"))
 }
 
 fn parse_local_date(date: &str) -> Option<NaiveDate> {
@@ -167,10 +163,7 @@ struct IsoDateTime {
 
 fn parse_iso_datetime(datetime: &str) -> Option<IsoDateTime> {
     let caps = DATETIME_PATTERN.captures(datetime)?;
-    let number = |i: usize| {
-        caps.get(i)
-            .map_or(Some(0), |m| m.as_str().parse::<u32>().ok())
-    };
+    let number = |i: usize| caps.get(i).map_or(Some(0), |m| m.as_str().parse::<u32>().ok());
     let date = NaiveDate::from_ymd_opt(caps[1].parse().ok()?, number(2)?, number(3)?)?;
     let time = NaiveTime::from_hms_opt(number(4)?, number(5)?, number(6)?)?;
     let offset_seconds = match caps.get(7).map(|m| m.as_str()) {
@@ -183,17 +176,10 @@ fn parse_iso_datetime(datetime: &str) -> Option<IsoDateTime> {
                 return None;
             }
             let magnitude = i32::try_from(hours * 3600 + minutes * 60).ok()?;
-            Some(if &caps[8] == "-" {
-                -magnitude
-            } else {
-                magnitude
-            })
+            Some(if &caps[8] == "-" { -magnitude } else { magnitude })
         }
     };
-    Some(IsoDateTime {
-        local: date.and_time(time),
-        offset_seconds,
-    })
+    Some(IsoDateTime { local: date.and_time(time), offset_seconds })
 }
 
 /// Validate an ISO 8601 datetime: naive, UTC (`Z`), or with a `±HH:MM` offset.
@@ -206,9 +192,7 @@ pub fn validate_date_time(datetime: Option<&str>, field_name: &str) -> Validatio
             "{field_name} must be in ISO 8601 format: naive local (YYYY-MM-DDTHH:MM:SS), UTC (…Z), or with an offset (…+HH:MM)"
         ));
     }
-    parse_iso_datetime(datetime)
-        .map(|_| ())
-        .ok_or_else(|| format!("{field_name} is not a valid datetime"))
+    parse_iso_datetime(datetime).map(|_| ()).ok_or_else(|| format!("{field_name} is not a valid datetime"))
 }
 
 /// Validate an optional IANA timezone identifier (e.g. `America/New_York`).
@@ -219,10 +203,7 @@ pub fn validate_timezone(timezone: Option<&str>, field_name: &str) -> Validation
     if utf16_len(timezone) > MAX_TIMEZONE_LENGTH {
         return Err(format!("{field_name} is too long"));
     }
-    timezone
-        .parse::<Tz>()
-        .map(|_| ())
-        .map_err(|_| format!("{field_name} is not a recognized IANA timezone"))
+    timezone.parse::<Tz>().map(|_| ()).map_err(|_| format!("{field_name} is not a recognized IANA timezone"))
 }
 
 /// Validate the `alarms` list: at most 8 entries, each with an RFC 5545 duration
@@ -234,10 +215,7 @@ pub fn validate_alarm_list(alarms: Option<&[AlarmInput]>, field_name: &str) -> V
     if alarms.len() > MAX_ALARMS {
         return Err(format!("{field_name} has too many entries (max 8)"));
     }
-    alarms
-        .iter()
-        .enumerate()
-        .try_for_each(|(i, alarm)| validate_alarm(alarm, &format!("{field_name}[{i}]")))
+    alarms.iter().enumerate().try_for_each(|(i, alarm)| validate_alarm(alarm, &format!("{field_name}[{i}]")))
 }
 
 fn validate_alarm(alarm: &AlarmInput, prefix: &str) -> ValidationResult {
@@ -249,50 +227,27 @@ fn validate_alarm(alarm: &AlarmInput, prefix: &str) -> ValidationResult {
             "{prefix}.trigger must be an RFC 5545 duration (e.g. -PT15M) or absolute UTC instant (yyyyMMddTHHmmssZ)"
         ));
     }
-    if alarm
-        .action
-        .as_deref()
-        .is_some_and(|a| !ALARM_ACTIONS.contains(&a))
-    {
-        return Err(format!(
-            "{prefix}.action must be one of DISPLAY/AUDIO/EMAIL"
-        ));
+    if alarm.action.as_deref().is_some_and(|a| !ALARM_ACTIONS.contains(&a)) {
+        return Err(format!("{prefix}.action must be one of DISPLAY/AUDIO/EMAIL"));
     }
-    if alarm
-        .description
-        .as_deref()
-        .is_some_and(|d| utf16_len(d) > MAX_ALARM_TEXT_LENGTH)
-    {
+    if alarm.description.as_deref().is_some_and(|d| utf16_len(d) > MAX_ALARM_TEXT_LENGTH) {
         return Err(format!("{prefix}.description exceeds 500 characters"));
     }
-    if alarm
-        .summary
-        .as_deref()
-        .is_some_and(|s| utf16_len(s) > MAX_ALARM_TEXT_LENGTH)
-    {
+    if alarm.summary.as_deref().is_some_and(|s| utf16_len(s) > MAX_ALARM_TEXT_LENGTH) {
         return Err(format!("{prefix}.summary exceeds 500 characters"));
     }
     if alarm.repeat_count.is_some_and(|c| c < 0) {
         return Err(format!("{prefix}.repeat_count must be >= 0"));
     }
-    if alarm
-        .repeat_duration
-        .as_deref()
-        .is_some_and(|d| !ALARM_DURATION_PATTERN.is_match(d))
-    {
-        return Err(format!(
-            "{prefix}.repeat_duration must be an RFC 5545 duration"
-        ));
+    if alarm.repeat_duration.as_deref().is_some_and(|d| !ALARM_DURATION_PATTERN.is_match(d)) {
+        return Err(format!("{prefix}.repeat_duration must be an RFC 5545 duration"));
     }
     Ok(())
 }
 
 /// Validate RDATE/EXDATE values: each a `YYYY-MM-DD` date or a naive/UTC
 /// datetime, at most 366 entries.
-pub fn validate_recurrence_date_list(
-    values: Option<&[String]>,
-    field_name: &str,
-) -> ValidationResult {
+pub fn validate_recurrence_date_list(values: Option<&[String]>, field_name: &str) -> ValidationResult {
     let Some(values) = values.filter(|v| !v.is_empty()) else {
         return Ok(());
     };
@@ -308,9 +263,7 @@ pub fn validate_recurrence_date_list(
         // a numeric offset would make it throw; reject offsets here instead.
         let without_z = value.strip_suffix('Z').unwrap_or(value);
         if has_explicit_zone(without_z) {
-            return Err(format!(
-                "{item} must be a date (YYYY-MM-DD) or a UTC datetime (…Z), not an offset datetime"
-            ));
+            return Err(format!("{item} must be a date (YYYY-MM-DD) or a UTC datetime (…Z), not an offset datetime"));
         }
         validate_date_time(Some(without_z), &item)?;
     }
@@ -324,9 +277,7 @@ pub fn validate_calendar_id(calendar_id: Option<&str>, field_name: &str) -> Vali
         return Err(format!("{field_name} is required"));
     };
     if utf16_len(calendar_id) > MAX_CALENDAR_ID_LENGTH {
-        return Err(format!(
-            "{field_name} is too long (max {MAX_CALENDAR_ID_LENGTH} characters)"
-        ));
+        return Err(format!("{field_name} is too long (max {MAX_CALENDAR_ID_LENGTH} characters)"));
     }
     if !CALENDAR_ID_PATTERN.is_match(calendar_id) || contains_injection_pattern(calendar_id) {
         return Err(format!("{field_name} contains invalid characters"));
@@ -336,13 +287,9 @@ pub fn validate_calendar_id(calendar_id: Option<&str>, field_name: &str) -> Vali
 
 fn contains_injection_pattern(input: &str) -> bool {
     let lower = input.to_lowercase();
-    DANGEROUS_SCHEMES
-        .iter()
-        .any(|scheme| lower.starts_with(scheme))
+    DANGEROUS_SCHEMES.iter().any(|scheme| lower.starts_with(scheme))
         || SSRF_PATTERNS.iter().any(|pattern| lower.contains(pattern))
-        || DANGEROUS_PATTERNS
-            .iter()
-            .any(|pattern| input.contains(pattern))
+        || DANGEROUS_PATTERNS.iter().any(|pattern| input.contains(pattern))
 }
 
 /// Validate an event title (required, at most 500 characters).
@@ -351,23 +298,17 @@ pub fn validate_title(title: Option<&str>, field_name: &str) -> ValidationResult
         return Err(format!("{field_name} is required"));
     };
     if utf16_len(title) > MAX_TITLE_LENGTH {
-        return Err(format!(
-            "{field_name} is too long (max {MAX_TITLE_LENGTH} characters)"
-        ));
+        return Err(format!("{field_name} is too long (max {MAX_TITLE_LENGTH} characters)"));
     }
     Ok(())
 }
 
 /// Validate an optional free-text field such as `description` or `location`.
-pub fn validate_optional_text(
-    text: Option<&str>,
-    field_name: &str,
-    max_length: usize,
-) -> ValidationResult {
+pub fn validate_optional_text(text: Option<&str>, field_name: &str, max_length: usize) -> ValidationResult {
     match text {
-        Some(text) if !is_blank(Some(text)) && utf16_len(text) > max_length => Err(format!(
-            "{field_name} is too long (max {max_length} characters)"
-        )),
+        Some(text) if !is_blank(Some(text)) && utf16_len(text) > max_length => {
+            Err(format!("{field_name} is too long (max {max_length} characters)"))
+        }
         _ => Ok(()),
     }
 }
@@ -387,12 +328,8 @@ pub fn validate_time_range(
     let start = resolve_instant(start_time, timezone);
     let end = resolve_instant(end_time, end_timezone.or(timezone));
     match (start, end) {
-        (Some(start), Some(end)) if end < start => {
-            Err("End time must be after start time".to_string())
-        }
-        (Some(start), Some(end)) if end == start => {
-            Err("End time must be different from start time".to_string())
-        }
+        (Some(start), Some(end)) if end < start => Err("End time must be after start time".to_string()),
+        (Some(start), Some(end)) if end == start => Err("End time must be different from start time".to_string()),
         (Some(_), Some(_)) => Ok(()),
         _ => Err("Invalid time format".to_string()),
     }
@@ -426,10 +363,7 @@ pub fn validate_scope(scope: Option<&str>, field_name: &str) -> ValidationResult
         return Ok(());
     };
     if EventScope::from_token(Some(scope)).is_none() {
-        return Err(format!(
-            "{field_name} must be one of {}",
-            EventScope::TOKENS.join(", ")
-        ));
+        return Err(format!("{field_name} must be one of {}", EventScope::TOKENS.join(", ")));
     }
     Ok(())
 }
@@ -472,8 +406,5 @@ pub fn validate_occurrence_scope_fields(
 
 /// The messages of every failed result, in order.
 pub fn collect_errors(results: &[ValidationResult]) -> Vec<String> {
-    results
-        .iter()
-        .filter_map(|r| r.as_ref().err().cloned())
-        .collect()
+    results.iter().filter_map(|r| r.as_ref().err().cloned()).collect()
 }

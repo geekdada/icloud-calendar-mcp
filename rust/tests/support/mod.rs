@@ -230,7 +230,12 @@ impl CalDavClient for MockCalDavClient {
         s.check_connection_result.clone().unwrap_or(Ok(true))
     }
 
-    async fn fetch_etags(&self, calendar_id: &str, _start: &str, _end: &str) -> CalDavResult<HashMap<String, Option<String>>> {
+    async fn fetch_etags(
+        &self,
+        calendar_id: &str,
+        _start: &str,
+        _end: &str,
+    ) -> CalDavResult<HashMap<String, Option<String>>> {
         let s = self.state();
         if let Some(e) = &s.error_to_return {
             return Err(e.clone());
@@ -282,7 +287,9 @@ pub fn vcalendar(body: &str) -> String {
 
 /// A timed UTC VEVENT `uid` with `summary`, from `start` to `end` (`YYYYMMDDTHHMMSSZ`).
 pub fn timed_vevent(uid: &str, summary: &str, start: &str, end: &str) -> String {
-    format!("BEGIN:VEVENT\r\nUID:{uid}\r\nDTSTAMP:20240101T000000Z\r\nDTSTART:{start}\r\nDTEND:{end}\r\nSUMMARY:{summary}\r\nEND:VEVENT\r\n")
+    format!(
+        "BEGIN:VEVENT\r\nUID:{uid}\r\nDTSTAMP:20240101T000000Z\r\nDTSTART:{start}\r\nDTEND:{end}\r\nSUMMARY:{summary}\r\nEND:VEVENT\r\n"
+    )
 }
 
 /// A service over `mock`.

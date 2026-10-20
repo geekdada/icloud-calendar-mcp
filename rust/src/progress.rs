@@ -25,11 +25,7 @@ pub struct ProgressState {
 
 impl ProgressState {
     fn new(progress: f64, message: Option<String>) -> Self {
-        Self {
-            progress,
-            message,
-            timestamp: SystemTime::now(),
-        }
+        Self { progress, message, timestamp: SystemTime::now() }
     }
 }
 
@@ -75,37 +71,28 @@ impl ProgressReporter {
         operation_name: &str,
         total: Option<f64>,
     ) -> Self {
-        let token = meta
-            .and_then(|m| m.get("progressToken"))
-            .and_then(|token| match token {
-                Value::Null => None,
-                Value::String(s) => Some(s.clone()),
-                other => Some(other.to_string()),
-            });
+        let token = meta.and_then(|m| m.get("progressToken")).and_then(|token| match token {
+            Value::Null => None,
+            Value::String(s) => Some(s.clone()),
+            other => Some(other.to_string()),
+        });
         Self::new(token, total, logger, operation_name)
     }
 
     /// Record an update. Values are stored as given; validating them is the
     /// caller's job.
     pub fn report(&self, progress: f64, message: Option<&str>) {
-        *self.state.lock().expect("progress lock") =
-            ProgressState::new(progress, message.map(str::to_string));
+        *self.state.lock().expect("progress lock") = ProgressState::new(progress, message.map(str::to_string));
         self.invoke_callback(progress, message);
 
         let (Some(logger), Some(token)) = (&self.logger, &self.progress_token) else {
             return;
         };
         // Float-to-int `as` saturates and maps NaN to 0, matching Kotlin's toInt().
-        let percent = self
-            .total
-            .map(|total| format!(" ({}%)", (progress / total * 100.0) as i64))
-            .unwrap_or_default();
+        let percent = self.total.map(|total| format!(" ({}%)", (progress / total * 100.0) as i64)).unwrap_or_default();
         logger.log(
             LoggingLevel::Debug,
-            &format!(
-                "Progress{percent}: {}",
-                message.unwrap_or(&self.operation_name)
-            ),
+            &format!("Progress{percent}: {}", message.unwrap_or(&self.operation_name)),
             &[
                 ("progressToken", json!(token)),
                 ("progress", json!(progress)),
@@ -122,14 +109,8 @@ impl ProgressReporter {
         if let (Some(logger), Some(token)) = (&self.logger, &self.progress_token) {
             logger.log(
                 LoggingLevel::Info,
-                &format!(
-                    "Operation complete: {}",
-                    message.unwrap_or(&self.operation_name)
-                ),
-                &[
-                    ("progressToken", json!(token)),
-                    ("operation", json!(self.operation_name)),
-                ],
+                &format!("Operation complete: {}", message.unwrap_or(&self.operation_name)),
+                &[("progressToken", json!(token)), ("operation", json!(self.operation_name))],
             );
         }
     }
@@ -159,10 +140,7 @@ impl ProgressReporter {
     }
 
     /// Register the callback invoked on every update (replacing any previous one).
-    pub fn on_progress(
-        &self,
-        callback: impl Fn(f64, Option<f64>, Option<&str>) + Send + Sync + 'static,
-    ) {
+    pub fn on_progress(&self, callback: impl Fn(f64, Option<f64>, Option<&str>) + Send + Sync + 'static) {
         *self.callback.lock().expect("progress lock") = Some(Arc::new(callback));
     }
 
@@ -192,12 +170,7 @@ impl McpLogger {
         total: Option<f64>,
         operation_name: &str,
     ) -> ProgressReporter {
-        ProgressReporter::new(
-            progress_token,
-            total,
-            Some(Arc::clone(self)),
-            operation_name,
-        )
+        ProgressReporter::new(progress_token, total, Some(Arc::clone(self)), operation_name)
     }
 }
 
@@ -251,10 +224,7 @@ mod tests {
         let sink = Arc::clone(&seen);
         r.on_progress(move |p, t, m| *sink.lock().unwrap() = Some((p, t, m.map(str::to_string))));
         r.report(100.0, Some("Halfway"));
-        assert_eq!(
-            *seen.lock().unwrap(),
-            Some((100.0, Some(200.0), Some("Halfway".to_string())))
-        );
+        assert_eq!(*seen.lock().unwrap(), Some((100.0, Some(200.0), Some("Halfway".to_string()))));
     }
 
     #[test]
@@ -268,8 +238,7 @@ mod tests {
 
     #[test]
     fn from_meta_extracts_token() {
-        let meta: Map<String, Value> =
-            serde_json::from_value(json!({"progressToken": "extracted-token"})).unwrap();
+        let meta: Map<String, Value> = serde_json::from_value(json!({"progressToken": "extracted-token"})).unwrap();
         let r = ProgressReporter::from_meta(Some(&meta), None, "test-op", None);
         assert_eq!(r.token(), Some("extracted-token"));
         assert!(!ProgressReporter::from_meta(None, None, "test-op", None).has_token());
@@ -282,27 +251,16 @@ mod tests {
             ProgressReporter::from_meta(Some(&malicious), None, "op", None).token(),
             Some("<script>alert('xss')</script>")
         );
-        let number: Map<String, Value> =
-            serde_json::from_value(json!({"progressToken": 12345})).unwrap();
-        assert_eq!(
-            ProgressReporter::from_meta(Some(&number), None, "op", None).token(),
-            Some("12345")
-        );
-        let null: Map<String, Value> =
-            serde_json::from_value(json!({"progressToken": null})).unwrap();
+        let number: Map<String, Value> = serde_json::from_value(json!({"progressToken": 12345})).unwrap();
+        assert_eq!(ProgressReporter::from_meta(Some(&number), None, "op", None).token(), Some("12345"));
+        let null: Map<String, Value> = serde_json::from_value(json!({"progressToken": null})).unwrap();
         assert!(!ProgressReporter::from_meta(Some(&null), None, "op", None).has_token());
     }
 
     #[test]
     fn logger_extension_and_logging() {
         let sink = Arc::new(MemorySink::new());
-        let logger = Arc::new(McpLogger::with_limits(
-            sink.clone(),
-            "test-logger",
-            10,
-            50,
-            1000,
-        ));
+        let logger = Arc::new(McpLogger::with_limits(sink.clone(), "test-logger", 10, 50, 1000));
         logger.set_level(LoggingLevel::Debug);
         let r = logger.progress_reporter(Some("ext-token".into()), Some(50.0), "extension-test");
         assert!(r.has_token());
@@ -401,9 +359,7 @@ mod tests {
         let handles: Vec<_> = (0..10)
             .map(|t| {
                 let r = Arc::clone(&r);
-                std::thread::spawn(move || {
-                    (0..100).for_each(|i| r.report(f64::from(t * 100 + i), Some("update")))
-                })
+                std::thread::spawn(move || (0..100).for_each(|i| r.report(f64::from(t * 100 + i), Some("update"))))
             })
             .collect();
         handles.into_iter().for_each(|h| h.join().unwrap());

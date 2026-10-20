@@ -18,11 +18,7 @@ pub enum EventScope {
 
 impl EventScope {
     /// Every scope, in declaration order.
-    pub const ALL: [EventScope; 3] = [
-        EventScope::ThisOccurrence,
-        EventScope::ThisAndFuture,
-        EventScope::AllEvents,
-    ];
+    pub const ALL: [EventScope; 3] = [EventScope::ThisOccurrence, EventScope::ThisAndFuture, EventScope::AllEvents];
 
     /// The wire tokens in declaration order, for schemas and error messages.
     pub const TOKENS: [&'static str; 3] = ["this_occurrence", "this_and_future", "all_events"];

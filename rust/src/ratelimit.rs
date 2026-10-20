@@ -77,10 +77,7 @@ impl RateLimiter {
 
     pub fn status(&self) -> RateLimitStatus {
         self.check_and_reset_window();
-        let (reads, writes) = (
-            self.read_count.load(Ordering::SeqCst),
-            self.write_count.load(Ordering::SeqCst),
-        );
+        let (reads, writes) = (self.read_count.load(Ordering::SeqCst), self.write_count.load(Ordering::SeqCst));
         RateLimitStatus {
             read_count: reads,
             write_count: writes,
@@ -101,11 +98,7 @@ impl RateLimiter {
         RateLimitResult {
             allowed,
             remaining: limit.saturating_sub(counter.load(Ordering::SeqCst)),
-            retry_after_ms: if allowed {
-                0
-            } else {
-                self.time_left_in_window()
-            },
+            retry_after_ms: if allowed { 0 } else { self.time_left_in_window() },
         }
     }
 
@@ -114,9 +107,7 @@ impl RateLimiter {
     }
 
     fn time_left_in_window(&self) -> u64 {
-        let elapsed = self
-            .now_ms()
-            .saturating_sub(self.window_start.load(Ordering::SeqCst));
+        let elapsed = self.now_ms().saturating_sub(self.window_start.load(Ordering::SeqCst));
         self.window_ms.saturating_sub(elapsed)
     }
 
@@ -126,10 +117,7 @@ impl RateLimiter {
         // Only the thread that wins the swap resets, so a burst at the boundary
         // cannot reset the counters twice.
         if now.saturating_sub(start) >= self.window_ms
-            && self
-                .window_start
-                .compare_exchange(start, now, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok()
+            && self.window_start.compare_exchange(start, now, Ordering::SeqCst, Ordering::SeqCst).is_ok()
         {
             self.read_count.store(0, Ordering::SeqCst);
             self.write_count.store(0, Ordering::SeqCst);
@@ -140,11 +128,7 @@ impl RateLimiter {
 /// Take one token if any remain. A compare-and-swap loop, so concurrent callers
 /// can never push the count past `limit`.
 fn acquire(counter: &AtomicU32, limit: u32) -> bool {
-    counter
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-            (count < limit).then_some(count + 1)
-        })
-        .is_ok()
+    counter.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| (count < limit).then_some(count + 1)).is_ok()
 }
 
 #[cfg(test)]
@@ -242,13 +226,7 @@ mod tests {
         let handles: Vec<_> = (0..threads)
             .map(|_| {
                 let limiter = Arc::clone(limiter);
-                std::thread::spawn(move || {
-                    if write {
-                        limiter.try_acquire_write()
-                    } else {
-                        limiter.try_acquire_read()
-                    }
-                })
+                std::thread::spawn(move || if write { limiter.try_acquire_write() } else { limiter.try_acquire_read() })
             })
             .collect();
         handles.into_iter().for_each(|h| {

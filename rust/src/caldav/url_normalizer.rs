@@ -36,18 +36,12 @@ mod tests {
 
     #[test]
     fn strips_regional_prefix_and_port() {
-        assert_eq!(
-            normalize("https://p42-caldav.icloud.com:443/x.ics"),
-            "https://caldav.icloud.com/x.ics"
-        );
+        assert_eq!(normalize("https://p42-caldav.icloud.com:443/x.ics"), "https://caldav.icloud.com/x.ics");
     }
 
     #[test]
     fn is_case_insensitive() {
-        assert_eq!(
-            normalize("https://P42-CALDAV.ICLOUD.COM/x.ics"),
-            "https://caldav.icloud.com/x.ics"
-        );
+        assert_eq!(normalize("https://P42-CALDAV.ICLOUD.COM/x.ics"), "https://caldav.icloud.com/x.ics");
     }
 
     #[test]
@@ -67,9 +61,6 @@ mod tests {
     #[test]
     fn passes_through_empty_and_plain_paths() {
         assert_eq!(normalize(""), "");
-        assert_eq!(
-            normalize("/123/calendars/home/e.ics"),
-            "/123/calendars/home/e.ics"
-        );
+        assert_eq!(normalize("/123/calendars/home/e.ics"), "/123/calendars/home/e.ics");
     }
 }

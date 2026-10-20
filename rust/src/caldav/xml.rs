@@ -85,13 +85,7 @@ impl ICloudXmlParser {
         }
         let uid = self.extract_uid(&ical_data)?;
         let etag = normalize_etag(element_text(response, "getetag").as_deref());
-        Some(CalDavEvent {
-            uid,
-            url: build_url(base_url, &href),
-            href,
-            etag,
-            ical_data,
-        })
+        Some(CalDavEvent { uid, url: build_url(base_url, &href), href, etag, ical_data })
     }
 
     /// The UID of the first `UID:` line, after RFC 5545 line unfolding.
@@ -99,11 +93,7 @@ impl ICloudXmlParser {
         if ics.trim().is_empty() {
             return None;
         }
-        let unfolded = ics
-            .replace("\r\n ", "")
-            .replace("\r\n\t", "")
-            .replace("\n ", "")
-            .replace("\n\t", "");
+        let unfolded = ics.replace("\r\n ", "").replace("\r\n\t", "").replace("\n ", "").replace("\n\t", "");
         unfolded
             .split(['\r', '\n'])
             .map(str::trim)
@@ -114,9 +104,7 @@ impl ICloudXmlParser {
     /// The `sync-token` of a sync-collection response.
     pub fn parse_sync_token(&self, xml: &str) -> Option<String> {
         let doc = parse_xml(xml)?;
-        descendants_named(doc.root(), "sync-token")
-            .next()
-            .map(text_content)
+        descendants_named(doc.root(), "sync-token").next().map(text_content)
     }
 
     /// Hrefs whose response carries a direct 404 status (deleted in a sync-collection).
@@ -125,9 +113,7 @@ impl ICloudXmlParser {
             return Vec::new();
         };
         descendants_named(doc.root(), "response")
-            .filter(|response| {
-                direct_child_text(*response, "status").is_some_and(|s| s.contains("404"))
-            })
+            .filter(|response| direct_child_text(*response, "status").is_some_and(|s| s.contains("404")))
             .filter_map(|response| element_text(response, "href"))
             .collect()
     }
@@ -147,10 +133,7 @@ impl ICloudXmlParser {
         descendants_named(doc.root(), "response")
             .filter_map(|response| {
                 let href = element_text(response, "href")?;
-                Some((
-                    href,
-                    normalize_etag(element_text(response, "getetag").as_deref()),
-                ))
+                Some((href, normalize_etag(element_text(response, "getetag").as_deref())))
             })
             .collect()
     }
@@ -181,20 +164,14 @@ fn parse_calendar_response(response: Node, base_url: &str) -> Option<CalDavCalen
 /// a status is treated as 200.
 fn success_prop<'a, 'i>(response: Node<'a, 'i>) -> Option<Node<'a, 'i>> {
     descendants_named(response, "propstat")
-        .filter(|propstat| {
-            element_text(*propstat, "status").is_none_or(|status| status.contains("200"))
-        })
+        .filter(|propstat| element_text(*propstat, "status").is_none_or(|status| status.contains("200")))
         .find_map(|propstat| descendants_named(propstat, "prop").next())
 }
 
 fn is_calendar_collection(prop: Node) -> bool {
     descendants_named(prop, "resourcetype")
         .next()
-        .is_some_and(|resource_type| {
-            resource_type
-                .children()
-                .any(|child| is_element_named(child, "calendar"))
-        })
+        .is_some_and(|resource_type| resource_type.children().any(|child| is_element_named(child, "calendar")))
 }
 
 /// Writable unless a privilege set is present and grants neither `write` nor
@@ -204,16 +181,13 @@ fn has_write_privilege(prop: Node) -> bool {
         return true;
     };
     descendants_named(privilege_set, "privilege").any(|privilege| {
-        privilege.children().any(|child| {
-            is_element_named(child, "write") || is_element_named(child, "write-content")
-        })
+        privilege.children().any(|child| is_element_named(child, "write") || is_element_named(child, "write-content"))
     })
 }
 
 /// Component names in document order, deduplicated.
 fn supported_components(prop: Node) -> Vec<String> {
-    let Some(component_set) = descendants_named(prop, "supported-calendar-component-set").next()
-    else {
+    let Some(component_set) = descendants_named(prop, "supported-calendar-component-set").next() else {
         return Vec::new();
     };
     let mut components = Vec::new();
@@ -226,16 +200,13 @@ fn supported_components(prop: Node) -> Vec<String> {
 }
 
 fn has_success_status(response: Node) -> bool {
-    descendants_named(response, "propstat").any(|propstat| {
-        element_text(propstat, "status").is_some_and(|status| status.contains("200"))
-    }) || direct_child_text(response, "status").is_some_and(|status| status.contains("200"))
+    descendants_named(response, "propstat")
+        .any(|propstat| element_text(propstat, "status").is_some_and(|status| status.contains("200")))
+        || direct_child_text(response, "status").is_some_and(|status| status.contains("200"))
 }
 
 fn parse_xml(xml: &str) -> Option<Document<'_>> {
-    let options = ParsingOptions {
-        allow_dtd: false,
-        ..ParsingOptions::default()
-    };
+    let options = ParsingOptions { allow_dtd: false, ..ParsingOptions::default() };
     Document::parse_with_options(xml, options).ok()
 }
 
@@ -245,47 +216,29 @@ fn is_element_named(node: Node, local_name: &str) -> bool {
 
 /// Descendant elements (excluding `parent` itself) with the given local name in
 /// any namespace, in document order.
-fn descendants_named<'a, 'i>(
-    parent: Node<'a, 'i>,
-    local_name: &'static str,
-) -> impl Iterator<Item = Node<'a, 'i>> {
-    parent
-        .descendants()
-        .filter(move |node| *node != parent && is_element_named(*node, local_name))
+fn descendants_named<'a, 'i>(parent: Node<'a, 'i>, local_name: &'static str) -> impl Iterator<Item = Node<'a, 'i>> {
+    parent.descendants().filter(move |node| *node != parent && is_element_named(*node, local_name))
 }
 
 /// Trimmed text content of the first descendant with the given local name.
 fn element_text(parent: Node, local_name: &'static str) -> Option<String> {
-    descendants_named(parent, local_name)
-        .next()
-        .map(text_content)
+    descendants_named(parent, local_name).next().map(text_content)
 }
 
 /// Trimmed text content of the first direct child with the given local name.
 fn direct_child_text(parent: Node, local_name: &str) -> Option<String> {
-    parent
-        .children()
-        .find(|child| is_element_named(*child, local_name))
-        .map(text_content)
+    parent.children().find(|child| is_element_named(*child, local_name)).map(text_content)
 }
 
 /// All text (including CDATA) beneath `node`, trimmed.
 fn text_content(node: Node) -> String {
-    let text: String = node
-        .descendants()
-        .filter(Node::is_text)
-        .filter_map(|n| n.text())
-        .collect();
+    let text: String = node.descendants().filter(Node::is_text).filter_map(|n| n.text()).collect();
     text.trim().to_string()
 }
 
 fn build_url(base_url: &str, href: &str) -> String {
     let base = base_url.trim_end_matches('/');
-    if href.starts_with('/') {
-        format!("{base}{href}")
-    } else {
-        format!("{base}/{href}")
-    }
+    if href.starts_with('/') { format!("{base}{href}") } else { format!("{base}/{href}") }
 }
 
 #[cfg(test)]
@@ -391,10 +344,8 @@ mod tests {
 
     #[test]
     fn parse_calendars_handles_missing_color_and_ctag() {
-        let xml = calendar_response(
-            "/123/calendars/home/",
-            &format!("<D:displayname>Home</D:displayname>{CALENDAR_TYPE}"),
-        );
+        let xml =
+            calendar_response("/123/calendars/home/", &format!("<D:displayname>Home</D:displayname>{CALENDAR_TYPE}"));
         let calendars = parser().parse_calendars(&xml, BASE);
         assert_eq!(calendars.len(), 1);
         assert_eq!(calendars[0].color, None);
@@ -482,10 +433,7 @@ mod tests {
 <D:propstat><D:prop>{CALENDAR_TYPE}<CS:getctag>right</CS:getctag></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>
 </D:response></D:multistatus>"#
         );
-        assert_eq!(
-            parser().parse_calendars(&xml, BASE)[0].ctag.as_deref(),
-            Some("right")
-        );
+        assert_eq!(parser().parse_calendars(&xml, BASE)[0].ctag.as_deref(), Some("right"));
     }
 
     #[test]
@@ -512,10 +460,7 @@ mod tests {
 <D:propstat><D:prop><D:displayname>Forbidden Name</D:displayname></D:prop><D:status>HTTP/1.1 403 Forbidden</D:status></D:propstat>
 </D:response></D:multistatus>"#
         );
-        assert_eq!(
-            parser().parse_calendars(&xml, BASE)[0].display_name,
-            "Visible"
-        );
+        assert_eq!(parser().parse_calendars(&xml, BASE)[0].display_name, "Visible");
     }
 
     #[test]
@@ -528,20 +473,13 @@ mod tests {
                 </C:supported-calendar-component-set>"#
             ),
         );
-        assert_eq!(
-            parser().parse_calendars(&xml, BASE)[0].supported_components,
-            vec!["VEVENT", "VTODO"]
-        );
+        assert_eq!(parser().parse_calendars(&xml, BASE)[0].supported_components, vec!["VEVENT", "VTODO"]);
     }
 
     #[test]
     fn parse_calendars_returns_empty_components_when_absent() {
         let xml = calendar_response("/123/calendars/home/", CALENDAR_TYPE);
-        assert!(
-            parser().parse_calendars(&xml, BASE)[0]
-                .supported_components
-                .is_empty()
-        );
+        assert!(parser().parse_calendars(&xml, BASE)[0].supported_components.is_empty());
     }
 
     #[test]
@@ -568,10 +506,7 @@ mod tests {
 <D:multistatus xmlns:D="DAV:"><D:response><D:href>/</D:href>
 <D:propstat><D:prop><D:current-user-principal><D:href>/1234567/principal/</D:href></D:current-user-principal></D:prop>
 <D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>"#;
-        assert_eq!(
-            parser().parse_current_user_principal(xml).as_deref(),
-            Some("/1234567/principal/")
-        );
+        assert_eq!(parser().parse_current_user_principal(xml).as_deref(), Some("/1234567/principal/"));
     }
 
     #[test]
@@ -589,27 +524,18 @@ mod tests {
 
     #[test]
     fn parse_calendar_home_set_extracts_first_href() {
-        assert_eq!(
-            parser().parse_calendar_home_set(TWO_HOME_SETS).as_deref(),
-            Some("/123/calendars/")
-        );
+        assert_eq!(parser().parse_calendar_home_set(TWO_HOME_SETS).as_deref(), Some("/123/calendars/"));
     }
 
     #[test]
     fn parse_calendar_home_sets_returns_all_hrefs() {
-        assert_eq!(
-            parser().parse_calendar_home_sets(TWO_HOME_SETS),
-            vec!["/123/calendars/", "/123/shared/"]
-        );
+        assert_eq!(parser().parse_calendar_home_sets(TWO_HOME_SETS), vec!["/123/calendars/", "/123/shared/"]);
     }
 
     #[test]
     fn parse_calendar_home_sets_single_and_empty() {
         let single = TWO_HOME_SETS.replace("<D:href>/123/shared/</D:href>", "");
-        assert_eq!(
-            parser().parse_calendar_home_sets(&single),
-            vec!["/123/calendars/"]
-        );
+        assert_eq!(parser().parse_calendar_home_sets(&single), vec!["/123/calendars/"]);
         let none = r#"<?xml version="1.0" encoding="UTF-8"?>
 <D:multistatus xmlns:D="DAV:"><D:response><D:href>/</D:href>
 <D:propstat><D:prop></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>"#;
@@ -627,10 +553,7 @@ mod tests {
         let event = &events[0];
         assert_eq!(event.uid, "event-123@icloud.com");
         assert_eq!(event.href, "/123/calendars/home/event-123.ics");
-        assert_eq!(
-            event.url,
-            "https://caldav.icloud.com/123/calendars/home/event-123.ics"
-        );
+        assert_eq!(event.url, "https://caldav.icloud.com/123/calendars/home/event-123.ics");
         assert_eq!(event.etag.as_deref(), Some("etag-abc"));
         assert!(event.ical_data.contains("SUMMARY:Meeting"));
     }
@@ -638,11 +561,7 @@ mod tests {
     #[test]
     fn parse_events_handles_cdata() {
         let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:cdata-test@icloud.com\nSUMMARY:CDATA Test\nEND:VEVENT\nEND:VCALENDAR";
-        let xml = event_response(
-            "/123/calendars/home/cdata-test.ics",
-            "\"etag-xyz\"",
-            &format!("<![CDATA[{ics}]]>"),
-        );
+        let xml = event_response("/123/calendars/home/cdata-test.ics", "\"etag-xyz\"", &format!("<![CDATA[{ics}]]>"));
         let events = parser().parse_events(&xml, BASE);
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].uid, "cdata-test@icloud.com");
@@ -660,10 +579,8 @@ mod tests {
 
     #[test]
     fn parse_events_handles_multiple_events() {
-        let ics1 =
-            "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:uid1@test\nEND:VEVENT\nEND:VCALENDAR";
-        let ics2 =
-            "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:uid2@test\nEND:VEVENT\nEND:VCALENDAR";
+        let ics1 = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:uid1@test\nEND:VEVENT\nEND:VCALENDAR";
+        let ics2 = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:uid2@test\nEND:VEVENT\nEND:VCALENDAR";
         let xml = format!(
             r#"<?xml version="1.0" encoding="UTF-8"?>
 <D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
@@ -680,15 +597,8 @@ mod tests {
     #[test]
     fn parse_events_normalizes_regional_hrefs() {
         let ics = "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:r@test\nEND:VEVENT\nEND:VCALENDAR";
-        let xml = event_response(
-            "https://p180-caldav.icloud.com:443/123/calendars/home/r.ics",
-            "\"e\"",
-            ics,
-        );
-        assert_eq!(
-            parser().parse_events(&xml, BASE)[0].href,
-            "https://caldav.icloud.com/123/calendars/home/r.ics"
-        );
+        let xml = event_response("https://p180-caldav.icloud.com:443/123/calendars/home/r.ics", "\"e\"", ics);
+        assert_eq!(parser().parse_events(&xml, BASE)[0].href, "https://caldav.icloud.com/123/calendars/home/r.ics");
     }
 
     #[test]
@@ -731,10 +641,7 @@ END:VCALENDAR</C:calendar-data><D:status>HTTP/1.1 200 OK</D:status></D:response>
     #[test]
     fn extract_uid_from_standard_ics() {
         let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nUID:unique-id-123@example.com\nSUMMARY:Test\nEND:VEVENT\nEND:VCALENDAR";
-        assert_eq!(
-            parser().extract_uid(ics).as_deref(),
-            Some("unique-id-123@example.com")
-        );
+        assert_eq!(parser().extract_uid(ics).as_deref(), Some("unique-id-123@example.com"));
     }
 
     #[test]
@@ -748,12 +655,7 @@ END:VCALENDAR</C:calendar-data><D:status>HTTP/1.1 200 OK</D:status></D:response>
 
     #[test]
     fn extract_uid_is_case_insensitive_and_trims() {
-        assert_eq!(
-            parser()
-                .extract_uid("BEGIN:VEVENT\nuid:  abc  \nEND:VEVENT")
-                .as_deref(),
-            Some("abc")
-        );
+        assert_eq!(parser().extract_uid("BEGIN:VEVENT\nuid:  abc  \nEND:VEVENT").as_deref(), Some("abc"));
     }
 
     #[test]
@@ -771,10 +673,7 @@ END:VCALENDAR</C:calendar-data><D:status>HTTP/1.1 200 OK</D:status></D:response>
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <D:multistatus xmlns:D="DAV:"><D:sync-token>https://caldav.icloud.com/sync/token-abc123</D:sync-token>
 <D:response><D:href>/cal/event.ics</D:href><D:propstat><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>"#;
-        assert_eq!(
-            parser().parse_sync_token(xml).as_deref(),
-            Some("https://caldav.icloud.com/sync/token-abc123")
-        );
+        assert_eq!(parser().parse_sync_token(xml).as_deref(), Some("https://caldav.icloud.com/sync/token-abc123"));
         let none = r#"<D:multistatus xmlns:D="DAV:"><D:response><D:href>/cal/</D:href></D:response></D:multistatus>"#;
         assert_eq!(parser().parse_sync_token(none), None);
     }
@@ -786,10 +685,7 @@ END:VCALENDAR</C:calendar-data><D:status>HTTP/1.1 200 OK</D:status></D:response>
 <D:response><D:href>/cal/event1.ics</D:href><D:status>HTTP/1.1 200 OK</D:status></D:response>
 <D:response><D:href>/cal/deleted-event.ics</D:href><D:status>HTTP/1.1 404 Not Found</D:status></D:response>
 </D:multistatus>"#;
-        assert_eq!(
-            parser().parse_deleted_event_hrefs(xml),
-            vec!["/cal/deleted-event.ics"]
-        );
+        assert_eq!(parser().parse_deleted_event_hrefs(xml), vec!["/cal/deleted-event.ics"]);
         let none = xml.replace("404 Not Found", "200 OK");
         assert!(parser().parse_deleted_event_hrefs(&none).is_empty());
     }
@@ -800,7 +696,8 @@ END:VCALENDAR</C:calendar-data><D:status>HTTP/1.1 200 OK</D:status></D:response>
 <D:multistatus xmlns:D="DAV:"><D:response><D:href>/cal/new-event.ics</D:href>
 <D:propstat><D:prop><D:getetag>"new-etag-123"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response></D:multistatus>"#;
         assert_eq!(parser().parse_etag(xml).as_deref(), Some("new-etag-123"));
-        let none = r#"<D:multistatus xmlns:D="DAV:"><D:response><D:href>/cal/event.ics</D:href></D:response></D:multistatus>"#;
+        let none =
+            r#"<D:multistatus xmlns:D="DAV:"><D:response><D:href>/cal/event.ics</D:href></D:response></D:multistatus>"#;
         assert_eq!(parser().parse_etag(none), None);
     }
 

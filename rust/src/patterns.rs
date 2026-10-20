@@ -14,8 +14,7 @@ pub static ICAL_ABSOLUTE_TRIGGER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\d{8}T\d{6}Z$").expect("valid regex"));
 
 /// A trailing numeric offset (`+HH:MM` / `-HH:MM`) on an ISO 8601 datetime.
-pub static OFFSET_SUFFIX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[+-]\d{2}:\d{2}$").expect("valid regex"));
+pub static OFFSET_SUFFIX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[+-]\d{2}:\d{2}$").expect("valid regex"));
 
 /// True when an ISO 8601 datetime carries an explicit zone: a UTC `Z` or a
 /// numeric offset.

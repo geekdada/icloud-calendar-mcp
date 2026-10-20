@@ -2,8 +2,7 @@
 //! value semantics, href id extraction, color normalization and credentials.
 
 use icloud_calendar_mcp::caldav::{
-    CalDavCalendar, CalDavCredentials, CalDavError, CalDavEvent, extract_calendar_id_from_href,
-    normalize_color,
+    CalDavCalendar, CalDavCredentials, CalDavError, CalDavEvent, extract_calendar_id_from_href, normalize_color,
 };
 
 fn calendar(ctag: Option<&str>) -> CalDavCalendar {
@@ -46,11 +45,7 @@ fn error_factories() {
         (CalDavError::not_found("Resource not found"), 404, false),
         (CalDavError::timeout("Request timed out"), 408, true),
         (CalDavError::conflict(), 412, false),
-        (
-            CalDavError::payload_too_large("Response too large"),
-            413,
-            false,
-        ),
+        (CalDavError::payload_too_large("Response too large"), 413, false),
         (CalDavError::rate_limited(), 429, true),
         (CalDavError::network("Connection refused"), 0, true),
         (CalDavError::ssl("Certificate invalid"), 0, false),
@@ -61,14 +56,8 @@ fn error_factories() {
         assert_eq!(error.code, code, "{error:?}");
         assert_eq!(error.retryable, retryable, "{error:?}");
     }
-    assert_eq!(
-        CalDavError::network("Connection refused").message,
-        "Connection refused"
-    );
-    assert_eq!(
-        CalDavError::bad_request("Missing UID").message,
-        "Missing UID"
-    );
+    assert_eq!(CalDavError::network("Connection refused").message, "Connection refused");
+    assert_eq!(CalDavError::bad_request("Missing UID").message, "Missing UID");
 }
 
 #[test]
@@ -90,10 +79,7 @@ fn error_classification() {
 
 #[test]
 fn error_display_includes_message_and_code() {
-    assert_eq!(
-        CalDavError::conflict().to_string(),
-        "Precondition failed (resource modified) (412)"
-    );
+    assert_eq!(CalDavError::conflict().to_string(), "Precondition failed (resource modified) (412)");
 }
 
 #[test]
@@ -114,26 +100,14 @@ fn event_has_etag() {
 
 #[test]
 fn events_compare_all_fields() {
-    assert_ne!(
-        event(Some("\"a\""), "VERSION:1"),
-        event(Some("\"b\""), "VERSION:2")
-    );
-    assert_eq!(
-        event(Some("\"a\""), "VERSION:1"),
-        event(Some("\"a\""), "VERSION:1")
-    );
+    assert_ne!(event(Some("\"a\""), "VERSION:1"), event(Some("\"b\""), "VERSION:2"));
+    assert_eq!(event(Some("\"a\""), "VERSION:1"), event(Some("\"a\""), "VERSION:1"));
 }
 
 #[test]
 fn calendar_id_extraction() {
-    assert_eq!(
-        extract_calendar_id_from_href("/1234567/calendars/home/"),
-        "home"
-    );
-    assert_eq!(
-        extract_calendar_id_from_href("/1234567/calendars/work"),
-        "work"
-    );
+    assert_eq!(extract_calendar_id_from_href("/1234567/calendars/home/"), "home");
+    assert_eq!(extract_calendar_id_from_href("/1234567/calendars/work"), "work");
     assert_eq!(extract_calendar_id_from_href("/calendars/"), "calendars");
     assert_eq!(extract_calendar_id_from_href("/home/"), "home");
     assert_eq!(
@@ -151,14 +125,8 @@ fn color_normalization() {
     assert_eq!(normalize_color(Some("#ffffff")).as_deref(), Some("#ffffff"));
     assert_eq!(normalize_color(Some("FF5733")).as_deref(), Some("#FF5733"));
     assert_eq!(normalize_color(Some("abc123")).as_deref(), Some("#abc123"));
-    assert_eq!(
-        normalize_color(Some("#FF5733FF")).as_deref(),
-        Some("#FF5733")
-    );
-    assert_eq!(
-        normalize_color(Some("#12345678")).as_deref(),
-        Some("#123456")
-    );
+    assert_eq!(normalize_color(Some("#FF5733FF")).as_deref(), Some("#FF5733"));
+    assert_eq!(normalize_color(Some("#12345678")).as_deref(), Some("#123456"));
     assert_eq!(normalize_color(Some("red")), None);
     assert_eq!(normalize_color(Some("#GGG")), None);
     assert_eq!(normalize_color(Some("rgb(255,0,0)")), None);

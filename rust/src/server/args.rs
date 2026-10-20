@@ -61,7 +61,9 @@ pub fn alarms(args: &Args, key: &str) -> Result<Option<Vec<AlarmInput>>, String>
             let field = |name: &str| -> Result<Option<String>, String> {
                 match entry.get(name) {
                     None | Some(Value::Null) => Ok(None),
-                    Some(value) => scalar_text(value).map(Some).ok_or_else(|| format!("{key}[{i}].{name} must be a string")),
+                    Some(value) => {
+                        scalar_text(value).map(Some).ok_or_else(|| format!("{key}[{i}].{name} must be a string"))
+                    }
                 }
             };
             Ok(AlarmInput {

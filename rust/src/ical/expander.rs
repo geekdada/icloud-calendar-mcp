@@ -2,6 +2,7 @@
 //! `(DTSTART ∪ RRULE ∪ RDATE) − EXDATE`, with RECURRENCE-ID overrides
 //! substituted for the occurrences they modify.
 
+use std::collections::HashSet;
 use std::fmt;
 
 use chrono::{DateTime, NaiveDateTime, NaiveTime, TimeDelta, Utc};
@@ -10,6 +11,7 @@ use chrono_tz::Tz;
 use super::datetime::ICalDateTime;
 use super::model::ICalEvent;
 use super::recur::{PeriodLimitExceeded, rule_dates};
+use super::rrule::Frequency;
 use super::timezone::{local_to_timestamp, system_zone};
 
 /// Most instances one series may generate inside a window. A pathological rule
@@ -78,12 +80,13 @@ impl EventZone {
     }
 }
 
-/// Expand `master` into the occurrences starting in the range: RRULE instances up
-/// to and including `range_end` (ical4j semantics), RDATEs before it,
-/// sorted by start. A non-recurring event comes back unchanged.
+/// Expand `master` into the occurrences starting in `[range_start, range_end]`
+/// (both ends inclusive), sorted by start. A non-recurring event comes back
+/// unchanged.
 ///
-/// `overrides` are the RECURRENCE-ID instances of the same UID; each replaces
-/// at most one generated occurrence.
+/// DTSTART is always the first instance (RFC 5545 §3.8.5), including for an
+/// RDATE-only series. `overrides` are the RECURRENCE-ID instances of the same
+/// UID; each replaces at most one generated occurrence.
 pub fn expand(
     master: &ICalEvent,
     range_start: DateTime<Utc>,
@@ -95,21 +98,10 @@ pub fn expand(
     }
     let zone = EventZone::of(master);
     let duration = event_duration(master);
-    let excluded_days: Vec<String> = master.exdates.iter().map(ICalDateTime::to_day_code).collect();
-    let mut overrides_by_instant: Vec<(i64, &ICalEvent, bool)> = overrides
-        .iter()
-        .filter_map(|o| o.recurrence_id.map(|rid| (normalize_to_master_value_type(&rid, &master.dt_start).timestamp, o, false)))
-        .collect();
-    let mut take_override = |instant: i64| -> Option<ICalEvent> {
-        let slot = overrides_by_instant
-            .iter_mut()
-            .find(|(at, _, used)| !*used && (*at - instant).abs() <= OVERRIDE_MATCH_TOLERANCE_MS)?;
-        slot.2 = true;
-        Some(slot.1.clone())
-    };
-
+    let exclusions = Exclusions::of(master);
+    let mut overrides = OverrideIndex::new(master, overrides);
     let mut occurrences = Vec::new();
-    let mut generated_days: Vec<String> = Vec::new();
+    let mut generated: HashSet<i64> = HashSet::new();
 
     if let Some(rule) = &master.rrule {
         let seed = local_seed(master, zone);
@@ -118,9 +110,6 @@ pub fn expand(
             if master.is_all_day { local.date().and_time(NaiveTime::MIN) } else { local }
         };
         let until = rule.until.map(|u| until_in_zone(&u, zone));
-        // rule_dates includes the range end (as ical4j's getDates did): for an
-        // all-day series the end is truncated to that day's midnight, and an
-        // occurrence on that day must still be generated.
         let dates = rule_dates(rule, seed, until, to_local(range_start), to_local(range_end), MAX_ITERATIONS + 1)
             .map_err(|PeriodLimitExceeded| ExpansionLimit { uid: master.uid.clone(), limit: MAX_ITERATIONS })?;
         if dates.len() > MAX_ITERATIONS {
@@ -128,37 +117,93 @@ pub fn expand(
         }
         for local in dates {
             let start = zone.occurrence(local, master.is_all_day);
-            let day_code = local.date().format("%Y%m%d").to_string();
-            if excluded_days.contains(&day_code) {
+            let instant = local_to_timestamp(local, zone.tz());
+            if exclusions.excludes(instant, &local.date().format("%Y%m%d").to_string()) {
                 continue;
             }
-            generated_days.push(day_code);
-            if let Some(replacement) = take_override(local_to_timestamp(local, zone.tz())) {
-                occurrences.push(replacement);
-                continue;
-            }
-            occurrences.push(occurrence_of(master, start, duration));
+            generated.insert(instant);
+            occurrences.push(overrides.take(instant).unwrap_or_else(|| occurrence_of(master, start, duration)));
         }
     }
 
-    for rdate in &master.rdates {
-        if rdate.timestamp < range_start.timestamp_millis() || rdate.timestamp >= range_end.timestamp_millis() {
+    // Without an RRULE, DTSTART joins the RDATEs as an explicit instance.
+    let standalone_start = master.rrule.is_none().then_some(master.dt_start);
+    let range = range_start.timestamp_millis()..=range_end.timestamp_millis();
+    for rdate in standalone_start.iter().chain(master.rdates.iter()) {
+        if !range.contains(&rdate.timestamp)
+            || exclusions.excludes(rdate.timestamp, &rdate.to_day_code())
+            || !generated.insert(rdate.timestamp)
+        {
             continue;
         }
-        let day_code = rdate.to_day_code();
-        if excluded_days.contains(&day_code) || generated_days.contains(&day_code) {
-            continue;
-        }
-        generated_days.push(day_code);
-        if let Some(replacement) = take_override(rdate.timestamp) {
-            occurrences.push(replacement);
-            continue;
-        }
-        occurrences.push(occurrence_of(master, *rdate, duration));
+        occurrences.push(overrides.take(rdate.timestamp).unwrap_or_else(|| occurrence_of(master, *rdate, duration)));
     }
 
     occurrences.sort_by_key(|o| o.dt_start.timestamp);
     Ok(occurrences)
+}
+
+/// The master's EXDATEs, matched by instant (after reconciling each with the
+/// DTSTART's value type). A series that yields at most one instance per day
+/// also matches by calendar day, so an EXDATE written at a stale time of day
+/// (the series was moved later) still cancels its day; a series with several
+/// instances a day must not lose its siblings to one EXDATE.
+struct Exclusions {
+    instants: HashSet<i64>,
+    days: HashSet<String>,
+    match_days: bool,
+}
+
+impl Exclusions {
+    fn of(master: &ICalEvent) -> Self {
+        let multiple = |list: &Option<Vec<i32>>| list.as_ref().is_some_and(|l| l.len() > 1);
+        let match_days = master.rrule.as_ref().is_some_and(|r| {
+            r.freq >= Frequency::Daily && !multiple(&r.by_hour) && !multiple(&r.by_minute) && !multiple(&r.by_second)
+        });
+        Self {
+            instants: master
+                .exdates
+                .iter()
+                .map(|e| normalize_to_master_value_type(e, &master.dt_start).timestamp)
+                .collect(),
+            days: master.exdates.iter().map(ICalDateTime::to_day_code).collect(),
+            match_days,
+        }
+    }
+
+    fn excludes(&self, instant: i64, day_code: &str) -> bool {
+        self.instants.contains(&instant) || (self.match_days && self.days.contains(day_code))
+    }
+}
+
+/// RECURRENCE-ID overrides keyed by their normalized instant, each usable once.
+struct OverrideIndex<'a> {
+    /// Sorted by instant.
+    entries: Vec<(i64, &'a ICalEvent, bool)>,
+}
+
+impl<'a> OverrideIndex<'a> {
+    fn new(master: &ICalEvent, overrides: &'a [ICalEvent]) -> Self {
+        let mut entries: Vec<(i64, &ICalEvent, bool)> = overrides
+            .iter()
+            .filter_map(|o| {
+                o.recurrence_id.map(|rid| (normalize_to_master_value_type(&rid, &master.dt_start).timestamp, o, false))
+            })
+            .collect();
+        entries.sort_by_key(|(at, _, _)| *at);
+        Self { entries }
+    }
+
+    /// The first unused override within the match tolerance of `instant`.
+    fn take(&mut self, instant: i64) -> Option<ICalEvent> {
+        let first = self.entries.partition_point(|(at, _, _)| *at < instant - OVERRIDE_MATCH_TOLERANCE_MS);
+        let slot = self.entries[first..]
+            .iter_mut()
+            .take_while(|(at, _, _)| *at <= instant + OVERRIDE_MATCH_TOLERANCE_MS)
+            .find(|(_, _, used)| !*used)?;
+        slot.2 = true;
+        Some(slot.1.clone())
+    }
 }
 
 /// The master's DTSTART as the wall-clock seed (midnight for all-day series).
@@ -182,9 +227,7 @@ fn until_in_zone(until: &ICalDateTime, zone: EventZone) -> NaiveDateTime {
 
 /// DURATION, else DTEND − DTSTART, else unknown.
 fn event_duration(event: &ICalEvent) -> Option<TimeDelta> {
-    event
-        .duration
-        .or_else(|| event.dt_end.map(|end| TimeDelta::milliseconds(end.timestamp - event.dt_start.timestamp)))
+    event.duration.or_else(|| event.dt_end.map(|end| TimeDelta::milliseconds(end.timestamp - event.dt_start.timestamp)))
 }
 
 fn occurrence_of(master: &ICalEvent, start: ICalDateTime, duration: Option<TimeDelta>) -> ICalEvent {
@@ -215,7 +258,10 @@ pub fn normalize_to_master_value_type(value: &ICalDateTime, master_start: &ICalD
     }
     if master_start.is_date {
         let zone = value.timezone.unwrap_or(Tz::UTC);
-        let date = DateTime::<Utc>::from_timestamp_millis(value.timestamp).unwrap_or_default().with_timezone(&zone).date_naive();
+        let date = DateTime::<Utc>::from_timestamp_millis(value.timestamp)
+            .unwrap_or_default()
+            .with_timezone(&zone)
+            .date_naive();
         return ICalDateTime::from_local_date(date);
     }
     let master_zone = master_start.timezone.unwrap_or(Tz::UTC);
@@ -307,7 +353,9 @@ mod tests {
 
     #[test]
     fn too_many_instances_is_an_error() {
-        let e = events("BEGIN:VEVENT\r\nUID:m\r\nDTSTART:20240101T000000Z\r\nRRULE:FREQ=MINUTELY\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let e = events(
+            "BEGIN:VEVENT\r\nUID:m\r\nDTSTART:20240101T000000Z\r\nRRULE:FREQ=MINUTELY\r\nSUMMARY:x\r\nEND:VEVENT\r\n",
+        );
         let err = expand(&e[0], utc("2024-01-01T00:00:00Z"), utc("2024-03-01T00:00:00Z"), &[]).unwrap_err();
         assert_eq!(err, ExpansionLimit { uid: "m".into(), limit: MAX_ITERATIONS });
     }

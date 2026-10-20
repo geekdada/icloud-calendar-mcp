@@ -62,7 +62,12 @@ pub fn resolve_timed(value: &str, timezone: Option<&str>) -> Result<ICalDateTime
             None => Ok(ICalDateTime::utc(local.and_utc().timestamp_millis())),
             Some(tzid) => {
                 let zone = resolve_tzid(tzid);
-                Ok(ICalDateTime { timestamp: local_to_timestamp(local, zone), timezone: Some(zone), is_utc: false, is_date: false })
+                Ok(ICalDateTime {
+                    timestamp: local_to_timestamp(local, zone),
+                    timezone: Some(zone),
+                    is_utc: false,
+                    is_date: false,
+                })
             }
         },
     }
@@ -95,7 +100,10 @@ mod tests {
 
     #[test]
     fn resolves_timed_inputs() {
-        assert_eq!(resolve_timed("2025-01-15T10:00:00Z", Some("Asia/Tokyo")).unwrap().to_ical_string(), "20250115T100000Z");
+        assert_eq!(
+            resolve_timed("2025-01-15T10:00:00Z", Some("Asia/Tokyo")).unwrap().to_ical_string(),
+            "20250115T100000Z"
+        );
         assert_eq!(resolve_timed("2025-01-15T19:00:00+09:00", None).unwrap().to_ical_string(), "20250115T100000Z");
         assert_eq!(resolve_timed("2025-01-15T10:00:00", None).unwrap().to_ical_string(), "20250115T100000Z");
         let zoned = resolve_timed("2025-01-15T10:00", Some("America/New_York")).unwrap();

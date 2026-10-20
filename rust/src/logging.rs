@@ -67,11 +67,7 @@ impl MemorySink {
 
 impl LogSink for MemorySink {
     fn send(&self, level: LoggingLevel, logger: &str, data: Value) {
-        self.records.lock().expect("sink lock").push(LogRecord {
-            level,
-            logger: logger.to_string(),
-            data,
-        });
+        self.records.lock().expect("sink lock").push(LogRecord { level, logger: logger.to_string(), data });
     }
 }
 
@@ -143,17 +139,14 @@ static KEY_VALUE_PATTERNS: LazyLock<Vec<KeyValuePattern>> = LazyLock::new(|| {
         pattern("secret", simple("secret"), false),
         pattern(
             "authorization",
-            format!(
-                r#"(?i)authorization["']?{WS}*[:=]{WS}*["']?({VALUE}+(?:{WS}+{VALUE}+)*)["']?"#
-            ),
+            format!(r#"(?i)authorization["']?{WS}*[:=]{WS}*["']?({VALUE}+(?:{WS}+{VALUE}+)*)["']?"#),
             false,
         ),
     ]
 });
 
-static EMAIL_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").expect("valid regex")
-});
+static EMAIL_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").expect("valid regex"));
 
 const REDACTED: &str = "[REDACTED]";
 
@@ -282,8 +275,7 @@ impl McpLogger {
         for (key, value) in data {
             payload.insert((*key).to_string(), sanitize_value(value));
         }
-        self.sink
-            .send(level, &self.logger_name, Value::Object(payload));
+        self.sink.send(level, &self.logger_name, Value::Object(payload));
     }
 
     /// Clear the rate-limit counters and start a new window.
@@ -304,25 +296,16 @@ impl McpLogger {
         let now = self.now_ms();
         let start = self.window_start.load(Ordering::SeqCst);
         if now.saturating_sub(start) >= self.window_ms
-            && self
-                .window_start
-                .compare_exchange(start, now, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok()
+            && self.window_start.compare_exchange(start, now, Ordering::SeqCst, Ordering::SeqCst).is_ok()
         {
             self.log_count.store(0, Ordering::SeqCst);
             self.burst_count.store(0, Ordering::SeqCst);
         }
-        let current_burst = self
-            .burst_count
-            .fetch_add(1, Ordering::SeqCst)
-            .saturating_add(1);
+        let current_burst = self.burst_count.fetch_add(1, Ordering::SeqCst).saturating_add(1);
         if current_burst > self.burst_limit {
             return false;
         }
-        let current_rate = self
-            .log_count
-            .fetch_add(1, Ordering::SeqCst)
-            .saturating_add(1);
+        let current_rate = self.log_count.fetch_add(1, Ordering::SeqCst).saturating_add(1);
         current_rate <= self.rate_limit || current_burst <= self.burst_limit
     }
 }
@@ -440,10 +423,7 @@ mod tests {
         assert_eq!(record.logger, "test-logger");
         let object = record.data.as_object().unwrap();
         assert_eq!(object.keys().next().map(String::as_str), Some("message"));
-        assert_eq!(
-            record.data["message"],
-            json!("Event created for [REDACTED]")
-        );
+        assert_eq!(record.data["message"], json!("Event created for [REDACTED]"));
         assert_eq!(record.data["tool"], json!("create_event"));
         assert_eq!(record.data["count"], json!(3));
         assert_eq!(record.data["ok"], json!(true));
@@ -534,9 +514,7 @@ mod tests {
 
     #[test]
     fn many_patterns_are_all_redacted() {
-        let many: String = (0..10_000)
-            .map(|i| format!("password{i}=value{i} "))
-            .collect();
+        let many: String = (0..10_000).map(|i| format!("password{i}=value{i} ")).collect();
         let _ = sanitize(&many);
         let alternating = "password=x token=y api_key=z secret=w ".repeat(5000);
         assert!(!sanitize(&alternating).contains("password=x"));
@@ -547,10 +525,7 @@ mod tests {
         let sink = Arc::new(MemorySink::new());
         let logger = logger_with(&sink, 10, 50);
         let keys: Vec<String> = (1..=10_000).map(|i| format!("key{i}")).collect();
-        let entries: Vec<(&str, Value)> = keys
-            .iter()
-            .map(|k| (k.as_str(), json!(format!("value-{k}"))))
-            .collect();
+        let entries: Vec<(&str, Value)> = keys.iter().map(|k| (k.as_str(), json!(format!("value-{k}")))).collect();
         logger.info("Test message", &entries);
         assert_eq!(sink.records()[0].data.as_object().unwrap().len(), 10_001);
     }

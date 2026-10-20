@@ -25,9 +25,7 @@ use reqwest::{Method, StatusCode, redirect};
 use super::etag::normalize_etag;
 use super::url_normalizer::normalize_icloud_url;
 use super::xml::ICloudXmlParser;
-use super::{
-    CalDavCalendar, CalDavClient, CalDavCredentials, CalDavError, CalDavEvent, CalDavResult,
-};
+use super::{CalDavCalendar, CalDavClient, CalDavCredentials, CalDavError, CalDavEvent, CalDavResult};
 
 /// Largest response body read into memory.
 pub const MAX_BODY_SIZE: usize = 2_000_000;
@@ -89,11 +87,7 @@ const PROPFIND_ETAG: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 
 /// A `calendar-query` REPORT over whole UTC days; dates are `YYYYMMDD`.
 fn calendar_query_report(start: &str, end: &str, include_data: bool) -> String {
-    let data = if include_data {
-        "\n        <C:calendar-data/>"
-    } else {
-        ""
-    };
+    let data = if include_data { "\n        <C:calendar-data/>" } else { "" };
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
@@ -121,32 +115,19 @@ struct RequestSpec {
 
 impl RequestSpec {
     fn new(method: Method, url: impl Into<String>) -> Self {
-        Self {
-            method,
-            url: url.into(),
-            body: None,
-            headers: Vec::new(),
-        }
+        Self { method, url: url.into(), body: None, headers: Vec::new() }
     }
 
     fn propfind(url: impl Into<String>, depth: &str, body: &str) -> Self {
-        Self::new(propfind(), url)
-            .xml_body(body)
-            .header("Depth", depth)
+        Self::new(propfind(), url).xml_body(body).header("Depth", depth)
     }
 
     fn xml_body(self, body: impl Into<String>) -> Self {
-        Self {
-            body: Some((XML_CONTENT_TYPE, body.into())),
-            ..self
-        }
+        Self { body: Some((XML_CONTENT_TYPE, body.into())), ..self }
     }
 
     fn ics_body(self, body: impl Into<String>) -> Self {
-        Self {
-            body: Some((ICS_CONTENT_TYPE, body.into())),
-            ..self
-        }
+        Self { body: Some((ICS_CONTENT_TYPE, body.into())), ..self }
     }
 
     fn header(mut self, name: &'static str, value: impl Into<String>) -> Self {
@@ -183,10 +164,7 @@ struct Attempt<T> {
 
 impl<T> Attempt<T> {
     fn done(result: CalDavResult<T>) -> Self {
-        Self {
-            result,
-            retry_after_ms: 0,
-        }
+        Self { result, retry_after_ms: 0 }
     }
 }
 
@@ -225,16 +203,9 @@ impl HttpCalDavClient {
         credentials: CalDavCredentials,
         client: reqwest::Client,
     ) -> CalDavResult<Self> {
-        let well_known_client = default_builder()
-            .redirect(redirect::Policy::none())
-            .build()
-            .map_err(client_build_error)?;
-        Ok(Self::with_clients(
-            base_url,
-            credentials,
-            client,
-            well_known_client,
-        ))
+        let well_known_client =
+            default_builder().redirect(redirect::Policy::none()).build().map_err(client_build_error)?;
+        Ok(Self::with_clients(base_url, credentials, client, well_known_client))
     }
 
     /// A client with both reqwest clients supplied (tests use this to bypass
@@ -245,8 +216,7 @@ impl HttpCalDavClient {
         client: reqwest::Client,
         well_known_client: reqwest::Client,
     ) -> Self {
-        let log_http =
-            std::env::var("CALDAV_LOG_HTTP").is_ok_and(|v| v.eq_ignore_ascii_case("true"));
+        let log_http = std::env::var("CALDAV_LOG_HTTP").is_ok_and(|v| v.eq_ignore_ascii_case("true"));
         Self {
             base_url: base_url.into(),
             credentials,
@@ -270,17 +240,11 @@ impl HttpCalDavClient {
     }
 
     fn state(&self) -> std::sync::MutexGuard<'_, DiscoveryState> {
-        self.state
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.state.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     fn absolute_url(&self, href: &str) -> String {
-        if href.starts_with("http") {
-            href.to_string()
-        } else {
-            format!("{}{href}", self.base_url)
-        }
+        if href.starts_with("http") { href.to_string() } else { format!("{}{href}", self.base_url) }
     }
 
     async fn find_calendar(&self, calendar_id: &str) -> CalDavResult<CalDavCalendar> {
@@ -295,26 +259,17 @@ impl HttpCalDavClient {
 
     async fn discover_principal(&self, discovery_url: &str) -> CalDavResult<Option<String>> {
         let spec = RequestSpec::propfind(discovery_url, "0", PROPFIND_PRINCIPAL);
-        self.execute(&spec, false, |resp| async move {
-            Ok(self.xml.parse_current_user_principal(&resp.body))
-        })
-        .await
+        self.execute(&spec, false, |resp| async move { Ok(self.xml.parse_current_user_principal(&resp.body)) }).await
     }
 
     async fn discover_home_sets(&self, principal_href: &str) -> CalDavResult<Vec<String>> {
         let spec = RequestSpec::propfind(self.absolute_url(principal_href), "0", PROPFIND_HOME_SET);
-        self.execute(&spec, false, |resp| async move {
-            Ok(self.xml.parse_calendar_home_sets(&resp.body))
-        })
-        .await
+        self.execute(&spec, false, |resp| async move { Ok(self.xml.parse_calendar_home_sets(&resp.body)) }).await
     }
 
     async fn fetch_calendars(&self, home_set_href: &str) -> CalDavResult<Vec<CalDavCalendar>> {
         let spec = RequestSpec::propfind(self.absolute_url(home_set_href), "1", PROPFIND_CALENDARS);
-        self.execute(&spec, false, |resp| async move {
-            Ok(self.xml.parse_calendars(&resp.body, &self.base_url))
-        })
-        .await
+        self.execute(&spec, false, |resp| async move { Ok(self.xml.parse_calendars(&resp.body, &self.base_url)) }).await
     }
 
     /// RFC 6764: follow `/.well-known/caldav` redirects by hand to find the
@@ -385,11 +340,7 @@ impl HttpCalDavClient {
 
     // ── HTTP plumbing ──
 
-    async fn send(
-        &self,
-        client: &reqwest::Client,
-        spec: &RequestSpec,
-    ) -> reqwest::Result<reqwest::Response> {
+    async fn send(&self, client: &reqwest::Client, spec: &RequestSpec) -> reqwest::Result<reqwest::Response> {
         if self.log_http {
             eprintln!("--> {} {}", spec.method, spec.url);
         }
@@ -400,9 +351,7 @@ impl HttpCalDavClient {
             request = request.header(*name, value);
         }
         if let Some((content_type, body)) = &spec.body {
-            request = request
-                .header("Content-Type", *content_type)
-                .body(body.clone());
+            request = request.header("Content-Type", *content_type).body(body.clone());
         }
         request.send().await
     }
@@ -412,11 +361,7 @@ impl HttpCalDavClient {
             return;
         }
         let shown: String = body.chars().take(MAX_BODY_LOG_CHARS).collect();
-        let shown = if body.chars().count() > MAX_BODY_LOG_CHARS {
-            format!("{shown}... [truncated]")
-        } else {
-            shown
-        };
+        let shown = if body.chars().count() > MAX_BODY_LOG_CHARS { format!("{shown}... [truncated]") } else { shown };
         eprintln!("<-- {status} {url} ({} chars)", shown.chars().count());
         if !shown.trim().is_empty() {
             eprintln!("{shown}");
@@ -445,25 +390,13 @@ impl HttpCalDavClient {
         if (200..=299).contains(&status) || (status == 404 && allow_404) {
             return Attempt::done(Ok(HttpResponse { headers, body }));
         }
-        let retry_after_ms = if status == 429 {
-            parse_retry_after(&headers)
-        } else {
-            0
-        };
-        Attempt {
-            result: Err(status_error(status)),
-            retry_after_ms,
-        }
+        let retry_after_ms = if status == 429 { parse_retry_after(&headers) } else { 0 };
+        Attempt { result: Err(status_error(status)), retry_after_ms }
     }
 
     /// Send `spec` with retry, then turn the success into a result. A failure
     /// from `process` counts against the circuit breaker like a request failure.
-    async fn execute<T, P, F>(
-        &self,
-        spec: &RequestSpec,
-        allow_404: bool,
-        process: P,
-    ) -> CalDavResult<T>
+    async fn execute<T, P, F>(&self, spec: &RequestSpec, allow_404: bool, process: P) -> CalDavResult<T>
     where
         P: Fn(HttpResponse) -> F,
         F: Future<Output = CalDavResult<T>>,
@@ -472,10 +405,7 @@ impl HttpCalDavClient {
             let attempt = self.attempt(spec, allow_404).await;
             match attempt.result {
                 Ok(response) => Attempt::done(process(response).await),
-                Err(e) => Attempt {
-                    result: Err(e),
-                    retry_after_ms: attempt.retry_after_ms,
-                },
+                Err(e) => Attempt { result: Err(e), retry_after_ms: attempt.retry_after_ms },
             }
         })
         .await
@@ -489,18 +419,11 @@ impl HttpCalDavClient {
         F: Future<Output = Attempt<T>>,
     {
         if self.consecutive_failures.load(Ordering::SeqCst) >= CIRCUIT_BREAKER_THRESHOLD {
-            return Err(CalDavError::new(
-                503,
-                "Circuit breaker open: too many consecutive failures",
-                false,
-            ));
+            return Err(CalDavError::new(503, "Circuit breaker open: too many consecutive failures", false));
         }
         let mut last_error = None;
         for retry in 0..=MAX_RETRIES {
-            let Attempt {
-                result,
-                retry_after_ms,
-            } = attempt().await;
+            let Attempt { result, retry_after_ms } = attempt().await;
             let error = match result {
                 Ok(value) => {
                     self.consecutive_failures.store(0, Ordering::SeqCst);
@@ -525,9 +448,7 @@ impl HttpCalDavClient {
 }
 
 fn default_builder() -> reqwest::ClientBuilder {
-    reqwest::Client::builder()
-        .connect_timeout(CONNECT_TIMEOUT)
-        .read_timeout(READ_TIMEOUT)
+    reqwest::Client::builder().connect_timeout(CONNECT_TIMEOUT).read_timeout(READ_TIMEOUT)
 }
 
 fn client_build_error(e: reqwest::Error) -> CalDavError {
@@ -538,10 +459,7 @@ fn client_build_error(e: reqwest::Error) -> CalDavError {
 /// Content-Length over the cap is rejected before reading anything; chunked
 /// bodies are cut off as soon as they cross it.
 async fn read_body_with_limit(mut response: reqwest::Response) -> reqwest::Result<Option<String>> {
-    if response
-        .content_length()
-        .is_some_and(|len| len > MAX_BODY_SIZE as u64)
-    {
+    if response.content_length().is_some_and(|len| len > MAX_BODY_SIZE as u64) {
         return Ok(None);
     }
     let mut bytes = Vec::new();
@@ -606,25 +524,18 @@ fn transport_error(e: &reqwest::Error) -> CalDavError {
 /// Retry-After as seconds or an HTTP-date (RFC 7231), in milliseconds, capped
 /// at [`MAX_RETRY_AFTER_MS`]. Absent or unparseable yields 0.
 pub fn parse_retry_after(headers: &HeaderMap) -> u64 {
-    headers
-        .get("Retry-After")
-        .and_then(|v| v.to_str().ok())
-        .map_or(0, retry_after_millis)
+    headers.get("Retry-After").and_then(|v| v.to_str().ok()).map_or(0, retry_after_millis)
 }
 
 fn retry_after_millis(value: &str) -> u64 {
     let value = value.trim();
     if let Ok(seconds) = value.parse::<i64>() {
-        return u64::try_from(seconds.saturating_mul(1000))
-            .unwrap_or(0)
-            .min(MAX_RETRY_AFTER_MS);
+        return u64::try_from(seconds.saturating_mul(1000)).unwrap_or(0).min(MAX_RETRY_AFTER_MS);
     }
     match chrono::DateTime::parse_from_rfc2822(value) {
         Ok(date) => {
             let delay = date.timestamp_millis() - chrono::Utc::now().timestamp_millis();
-            u64::try_from(delay.max(0))
-                .unwrap_or(0)
-                .min(MAX_RETRY_AFTER_MS)
+            u64::try_from(delay.max(0)).unwrap_or(0).min(MAX_RETRY_AFTER_MS)
         }
         Err(_) => 0,
     }
@@ -643,20 +554,14 @@ impl CalDavClient for HttpCalDavClient {
             return Ok(calendars.clone());
         }
 
-        let effective_base = self
-            .discover_well_known()
-            .await
-            .unwrap_or_else(|| self.base_url.clone());
+        let effective_base = self.discover_well_known().await.unwrap_or_else(|| self.base_url.clone());
         let principal = self
             .discover_principal(&effective_base)
             .await?
             .ok_or_else(|| CalDavError::server(500, "Could not discover principal"))?;
         let home_sets = self.discover_home_sets(&principal).await?;
         let Some(first_home_set) = home_sets.first() else {
-            return Err(CalDavError::server(
-                500,
-                "Could not discover calendar-home-set",
-            ));
+            return Err(CalDavError::server(500, "Could not discover calendar-home-set"));
         };
         self.state().calendar_home_set = Some(first_home_set.clone());
 
@@ -666,11 +571,7 @@ impl CalDavClient for HttpCalDavClient {
         let mut seen_hrefs = HashSet::new();
         for home_set in &home_sets {
             if let Ok(found) = self.fetch_calendars(home_set).await {
-                calendars.extend(
-                    found
-                        .into_iter()
-                        .filter(|cal| seen_hrefs.insert(cal.href.clone())),
-                );
+                calendars.extend(found.into_iter().filter(|cal| seen_hrefs.insert(cal.href.clone())));
             }
         }
 
@@ -678,36 +579,18 @@ impl CalDavClient for HttpCalDavClient {
         Ok(calendars)
     }
 
-    async fn get_events(
-        &self,
-        calendar_id: &str,
-        start_date: &str,
-        end_date: &str,
-    ) -> CalDavResult<Vec<CalDavEvent>> {
+    async fn get_events(&self, calendar_id: &str, start_date: &str, end_date: &str) -> CalDavResult<Vec<CalDavEvent>> {
         // Defense in depth: the dates are interpolated into the REPORT body.
         if !check_date(start_date) {
-            return Err(CalDavError::bad_request(
-                "Invalid start date format: expected YYYY-MM-DD",
-            ));
+            return Err(CalDavError::bad_request("Invalid start date format: expected YYYY-MM-DD"));
         }
         if !check_date(end_date) {
-            return Err(CalDavError::bad_request(
-                "Invalid end date format: expected YYYY-MM-DD",
-            ));
+            return Err(CalDavError::bad_request("Invalid end date format: expected YYYY-MM-DD"));
         }
         let calendar = self.find_calendar(calendar_id).await?;
-        let body = calendar_query_report(
-            &start_date.replace('-', ""),
-            &end_date.replace('-', ""),
-            true,
-        );
-        let spec = RequestSpec::new(report(), calendar.url)
-            .xml_body(body)
-            .header("Depth", "1");
-        self.execute(&spec, false, |resp| async move {
-            Ok(self.xml.parse_events(&resp.body, &self.base_url))
-        })
-        .await
+        let body = calendar_query_report(&start_date.replace('-', ""), &end_date.replace('-', ""), true);
+        let spec = RequestSpec::new(report(), calendar.url).xml_body(body).header("Depth", "1");
+        self.execute(&spec, false, |resp| async move { Ok(self.xml.parse_events(&resp.body, &self.base_url)) }).await
     }
 
     async fn get_event(&self, href: &str) -> CalDavResult<CalDavEvent> {
@@ -717,20 +600,15 @@ impl CalDavClient for HttpCalDavClient {
         self.execute(&spec, false, |resp| {
             let (url, href) = (&url, &normalized_href);
             async move {
-                let uid = self.xml.extract_uid(&resp.body).ok_or_else(|| {
-                    CalDavError::not_found(format!("Event body missing UID at {href}"))
-                })?;
+                let uid = self
+                    .xml
+                    .extract_uid(&resp.body)
+                    .ok_or_else(|| CalDavError::not_found(format!("Event body missing UID at {href}")))?;
                 let etag = match resp.etag_header() {
                     Some(etag) => Some(etag),
                     None => self.fetch_etag(url).await,
                 };
-                Ok(CalDavEvent {
-                    uid,
-                    href: href.clone(),
-                    url: url.clone(),
-                    etag,
-                    ical_data: resp.body,
-                })
+                Ok(CalDavEvent { uid, href: href.clone(), url: url.clone(), etag, ical_data: resp.body })
             }
         })
         .await
@@ -738,18 +616,9 @@ impl CalDavClient for HttpCalDavClient {
 
     async fn create_event(&self, calendar_id: &str, ical_data: &str) -> CalDavResult<CalDavEvent> {
         let calendar = self.find_calendar(calendar_id).await?;
-        let uid = self
-            .xml
-            .extract_uid(ical_data)
-            .ok_or_else(|| CalDavError::bad_request("ICS data missing UID"))?;
-        let event_url = format!(
-            "{}/{}.ics",
-            calendar.url.trim_end_matches('/'),
-            uuid::Uuid::new_v4()
-        );
-        let spec = RequestSpec::new(Method::PUT, event_url.clone())
-            .ics_body(ical_data)
-            .header("If-None-Match", "*");
+        let uid = self.xml.extract_uid(ical_data).ok_or_else(|| CalDavError::bad_request("ICS data missing UID"))?;
+        let event_url = format!("{}/{}.ics", calendar.url.trim_end_matches('/'), uuid::Uuid::new_v4());
+        let spec = RequestSpec::new(Method::PUT, event_url.clone()).ics_body(ical_data).header("If-None-Match", "*");
         self.execute(&spec, false, |resp| {
             let (uid, event_url) = (&uid, &event_url);
             async move {
@@ -757,10 +626,9 @@ impl CalDavClient for HttpCalDavClient {
                     Some(etag) => Some(etag),
                     None => self.fetch_etag(event_url).await,
                 };
-                let href = event_url.find(&self.base_url).map_or_else(
-                    || event_url.clone(),
-                    |at| event_url[at + self.base_url.len()..].to_string(),
-                );
+                let href = event_url
+                    .find(&self.base_url)
+                    .map_or_else(|| event_url.clone(), |at| event_url[at + self.base_url.len()..].to_string());
                 Ok(CalDavEvent {
                     uid: uid.clone(),
                     href,
@@ -773,17 +641,9 @@ impl CalDavClient for HttpCalDavClient {
         .await
     }
 
-    async fn update_event(
-        &self,
-        href: &str,
-        ical_data: &str,
-        etag: Option<&str>,
-    ) -> CalDavResult<CalDavEvent> {
+    async fn update_event(&self, href: &str, ical_data: &str, etag: Option<&str>) -> CalDavResult<CalDavEvent> {
         let url = self.absolute_url(href);
-        let uid = self
-            .xml
-            .extract_uid(ical_data)
-            .ok_or_else(|| CalDavError::bad_request("ICS data missing UID"))?;
+        let uid = self.xml.extract_uid(ical_data).ok_or_else(|| CalDavError::bad_request("ICS data missing UID"))?;
         // Without a caller ETag (some REPORT responses omit getetag), probe for
         // one so the PUT still carries If-Match; a failed probe falls back to an
         // unconditional PUT.
@@ -865,18 +725,9 @@ impl CalDavClient for HttpCalDavClient {
             return Err(CalDavError::bad_request("Invalid date format"));
         }
         let calendar = self.find_calendar(calendar_id).await?;
-        let body = calendar_query_report(
-            &start_date.replace('-', ""),
-            &end_date.replace('-', ""),
-            false,
-        );
-        let spec = RequestSpec::new(report(), calendar.url)
-            .xml_body(body)
-            .header("Depth", "1");
-        self.execute(&spec, false, |resp| async move {
-            Ok(self.xml.parse_etags(&resp.body))
-        })
-        .await
+        let body = calendar_query_report(&start_date.replace('-', ""), &end_date.replace('-', ""), false);
+        let spec = RequestSpec::new(report(), calendar.url).xml_body(body).header("Depth", "1");
+        self.execute(&spec, false, |resp| async move { Ok(self.xml.parse_etags(&resp.body)) }).await
     }
 }
 
@@ -903,10 +754,7 @@ mod tests {
     #[test]
     fn retry_after_seconds_is_capped() {
         assert_eq!(parse_retry_after(&headers("Retry-After", "1")), 1000);
-        assert_eq!(
-            parse_retry_after(&headers("Retry-After", "120")),
-            MAX_RETRY_AFTER_MS
-        );
+        assert_eq!(parse_retry_after(&headers("Retry-After", "120")), MAX_RETRY_AFTER_MS);
         assert_eq!(parse_retry_after(&headers("Retry-After", "0")), 0);
         assert_eq!(parse_retry_after(&headers("Retry-After", "-5")), 0);
     }
@@ -914,14 +762,8 @@ mod tests {
     #[test]
     fn retry_after_http_date() {
         let future = (chrono::Utc::now() + chrono::TimeDelta::seconds(60)).to_rfc2822();
-        assert_eq!(
-            parse_retry_after(&headers("Retry-After", &future)),
-            MAX_RETRY_AFTER_MS
-        );
-        assert_eq!(
-            parse_retry_after(&headers("Retry-After", "Wed, 21 Oct 2015 07:28:00 GMT")),
-            0
-        );
+        assert_eq!(parse_retry_after(&headers("Retry-After", &future)), MAX_RETRY_AFTER_MS);
+        assert_eq!(parse_retry_after(&headers("Retry-After", "Wed, 21 Oct 2015 07:28:00 GMT")), 0);
     }
 
     #[test]
@@ -969,10 +811,7 @@ mod tests {
             reqwest::Client::new(),
             reqwest::Client::new(),
         );
-        assert_eq!(
-            client.preserve_https("http://x.icloud.com/a".into()),
-            "https://x.icloud.com/a"
-        );
+        assert_eq!(client.preserve_https("http://x.icloud.com/a".into()), "https://x.icloud.com/a");
         assert_eq!(client.preserve_https("https://x/a".into()), "https://x/a");
     }
 }

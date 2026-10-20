@@ -52,10 +52,13 @@ The ported test suites pin the rest of the behavior to the Kotlin build. These d
 - Properties the model does not interpret (ORGANIZER, ATTENDEE, X-*, CLASS, GEO, COLOR, IMAGE, CONFERENCE and others) are written back exactly as read. The Kotlin build re-serialized some of them from a partial model.
 - All VEVENT properties are written before the VALARM blocks, as RFC 5545 requires.
 - RRULE `UNTIL` in UTC is compared as an instant. ical4j compared it against the series' local wall clock, which dropped the last occurrence for zones east of UTC.
+- DTSTART is always the first occurrence of a series and counts toward COUNT, as RFC 5545 §3.3.10 requires. ical4j skipped it when the rule did not generate it (for example `FREQ=WEEKLY;BYDAY=MO` starting on a Tuesday).
+- An EXDATE removes the occurrence at its exact time. It removes a whole day only for series with at most one occurrence per day, which is how the Kotlin build matched every EXDATE.
 - VTIMEZONE blocks use the local wall-clock time of each transition and the real zone abbreviation (`JST`, not `TOKY`).
 - A property whose value cannot be read is treated as absent instead of dropping the whole event.
 - A JSON `null` argument counts as absent. An object or array where a string belongs returns `VALIDATION_ERROR` instead of `INTERNAL_ERROR`.
 - `update_event` validates `start_date` and `end_date`.
+- An update that still hits a stale ETag after its one retry returns `CONFLICT`, as the main README describes. The Kotlin build returned `INTERNAL_ERROR`.
 - Datetimes without seconds (`2026-01-15T09:00`) work with a `timezone`, where the Kotlin build failed on them.
 - The rate limiter belongs to each server instance rather than a process-wide global.
 

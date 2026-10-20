@@ -69,10 +69,8 @@ pub fn parse_vevent(vevent: &Component) -> Option<ICalEvent> {
         || is_eight_digit_date(start_value)
         || !start_value.contains('T');
 
-    let uid = vevent
-        .property("UID")
-        .map(|p| p.value.trim().to_string())
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let uid =
+        vevent.property("UID").map(|p| p.value.trim().to_string()).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     let recurrence_prop = vevent.property("RECURRENCE-ID");
     let recurrence_id = recurrence_prop.and_then(parse_date_property);
@@ -87,16 +85,15 @@ pub fn parse_vevent(vevent: &Component) -> Option<ICalEvent> {
     event.duration = vevent.property("DURATION").and_then(|p| parse_duration(&p.value));
     event.recurrence_id = recurrence_id;
     event.recurrence_id_range = recurrence_id.and(recurrence_id_range);
-    event.rrule = if recurrence_id.is_none() {
-        vevent.property("RRULE").and_then(|p| RRule::parse(&p.value).ok())
-    } else {
-        None
-    };
+    event.rrule =
+        if recurrence_id.is_none() { vevent.property("RRULE").and_then(|p| RRule::parse(&p.value).ok()) } else { None };
     event.exdates = vevent.properties_named("EXDATE").flat_map(|p| parse_date_list(p).unwrap_or_default()).collect();
     event.rdates = vevent
         .properties_named("RDATE")
         .filter(|p| !is_period(p))
-        .flat_map(|p| p.value.split(',').filter_map(|v| ICalDateTime::parse(v.trim(), p.param("TZID")).ok()).collect::<Vec<_>>())
+        .flat_map(|p| {
+            p.value.split(',').filter_map(|v| ICalDateTime::parse(v.trim(), p.param("TZID")).ok()).collect::<Vec<_>>()
+        })
         .collect();
     event.alarms = vevent.children_named("VALARM").filter_map(parse_valarm).collect();
     event.categories = vevent
@@ -117,10 +114,9 @@ pub fn parse_vevent(vevent: &Component) -> Option<ICalEvent> {
         .and_then(|p| p.value.trim().parse::<i32>().ok())
         .map(|p| p.clamp(0, 9))
         .unwrap_or(0);
-    event.organizer = vevent.property("ORGANIZER").map(|p| Organizer {
-        email: cal_address_email(p),
-        name: p.param("CN").map(str::to_string),
-    });
+    event.organizer = vevent
+        .property("ORGANIZER")
+        .map(|p| Organizer { email: cal_address_email(p), name: p.param("CN").map(str::to_string) });
     event.attendees = vevent
         .properties_named("ATTENDEE")
         .map(|p| Attendee { email: cal_address_email(p), name: p.param("CN").map(str::to_string) })
@@ -170,12 +166,8 @@ pub fn parse_valarm(valarm: &Component) -> Option<ICalAlarm> {
         .or_else(|| valarm.property("X-WR-ALARMUID"))
         .map(|p| p.value.trim().to_string())
         .filter(|uid| !uid.is_empty());
-    alarm.raw_properties = valarm
-        .properties
-        .iter()
-        .filter(|p| !HANDLED_ALARM_PROPERTIES.contains(&p.name.as_str()))
-        .cloned()
-        .collect();
+    alarm.raw_properties =
+        valarm.properties.iter().filter(|p| !HANDLED_ALARM_PROPERTIES.contains(&p.name.as_str())).cloned().collect();
     Some(alarm)
 }
 
@@ -223,11 +215,8 @@ pub fn cal_address_email(prop: &ContentLine) -> String {
 
 fn strip_mailto(value: &str) -> String {
     let trimmed = value.trim().trim_start_matches('"').trim_end_matches('"').trim();
-    let without_scheme = if trimmed.len() >= 7 && trimmed[..7].eq_ignore_ascii_case("mailto:") {
-        &trimmed[7..]
-    } else {
-        trimmed
-    };
+    let without_scheme =
+        if trimmed.len() >= 7 && trimmed[..7].eq_ignore_ascii_case("mailto:") { &trimmed[7..] } else { trimmed };
     without_scheme.trim().to_string()
 }
 
@@ -263,7 +252,9 @@ mod tests {
 
     #[test]
     fn detects_all_day_and_missing_status() {
-        let e = one("BEGIN:VEVENT\r\nUID:d\r\nDTSTART;VALUE=DATE:20240115\r\nDTEND;VALUE=DATE:20240116\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let e = one(
+            "BEGIN:VEVENT\r\nUID:d\r\nDTSTART;VALUE=DATE:20240115\r\nDTEND;VALUE=DATE:20240116\r\nSUMMARY:x\r\nEND:VEVENT\r\n",
+        );
         assert!(e.is_all_day);
         assert!(e.dt_start.is_date);
         assert_eq!(e.status, None);
@@ -273,8 +264,9 @@ mod tests {
     fn falls_back_to_dtend_and_swaps_inverted_range() {
         let e = one("BEGIN:VEVENT\r\nUID:a\r\nDTEND:20240115T100000Z\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
         assert_eq!(e.dt_start.to_ical_string(), "20240115T100000Z");
-        let swapped =
-            one("BEGIN:VEVENT\r\nUID:b\r\nDTSTART:20240115T110000Z\r\nDTEND:20240115T100000Z\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let swapped = one(
+            "BEGIN:VEVENT\r\nUID:b\r\nDTSTART:20240115T110000Z\r\nDTEND:20240115T100000Z\r\nSUMMARY:x\r\nEND:VEVENT\r\n",
+        );
         assert_eq!(swapped.dt_start.to_ical_string(), "20240115T100000Z");
         assert_eq!(swapped.dt_end.unwrap().to_ical_string(), "20240115T110000Z");
     }
@@ -309,7 +301,8 @@ mod tests {
 
     #[test]
     fn unreadable_rrule_is_ignored_not_fatal() {
-        let e = one("BEGIN:VEVENT\r\nUID:r\r\nDTSTART:20240101T100000Z\r\nRRULE:FREQ=NEVER\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let e =
+            one("BEGIN:VEVENT\r\nUID:r\r\nDTSTART:20240101T100000Z\r\nRRULE:FREQ=NEVER\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
         assert!(e.rrule.is_none());
     }
 
@@ -346,13 +339,17 @@ mod tests {
 
     #[test]
     fn categories_split_and_blank_dropped() {
-        let e = one("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20240101T100000Z\r\nCATEGORIES:Work, Home,,A\\,B\r\nSUMMARY:x\r\nEND:VEVENT\r\n");
+        let e = one(
+            "BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20240101T100000Z\r\nCATEGORIES:Work, Home,,A\\,B\r\nSUMMARY:x\r\nEND:VEVENT\r\n",
+        );
         assert_eq!(e.categories, vec!["Work", "Home", "A,B"]);
     }
 
     #[test]
     fn keeps_x_properties_raw() {
-        let e = one("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20240101T100000Z\r\nSUMMARY:x\r\nX-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC\r\nEND:VEVENT\r\n");
+        let e = one(
+            "BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20240101T100000Z\r\nSUMMARY:x\r\nX-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC\r\nEND:VEVENT\r\n",
+        );
         assert_eq!(e.raw_properties[0].raw, "X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC");
     }
 

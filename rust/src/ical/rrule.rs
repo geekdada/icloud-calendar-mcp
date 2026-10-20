@@ -67,11 +67,8 @@ static WEEKDAY_NUM: LazyLock<Regex> =
 impl WeekdayNum {
     pub fn parse(value: &str) -> Result<Self, ICalError> {
         let upper = value.to_ascii_uppercase();
-        let caps = WEEKDAY_NUM
-            .captures(&upper)
-            .ok_or_else(|| ICalError::new(format!("Invalid weekday: {value}")))?;
-        let weekday = weekday_from_ical(&caps[2])
-            .ok_or_else(|| ICalError::new(format!("Invalid weekday: {value}")))?;
+        let caps = WEEKDAY_NUM.captures(&upper).ok_or_else(|| ICalError::new(format!("Invalid weekday: {value}")))?;
+        let weekday = weekday_from_ical(&caps[2]).ok_or_else(|| ICalError::new(format!("Invalid weekday: {value}")))?;
         let ordinal = caps.get(1).and_then(|m| m.as_str().parse().ok());
         Ok(Self { weekday, ordinal })
     }
@@ -168,9 +165,8 @@ impl RRule {
             }
         }
         let get = |key: &str| parts.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
-        let freq: Frequency = get("FREQ")
-            .ok_or_else(|| ICalError::new(format!("RRULE missing FREQ: {value}")))?
-            .parse()?;
+        let freq: Frequency =
+            get("FREQ").ok_or_else(|| ICalError::new(format!("RRULE missing FREQ: {value}")))?.parse()?;
         let ints = |key: &str| -> Option<Vec<i32>> {
             get(key).map(|v| v.split(',').filter_map(|n| n.trim().parse().ok()).collect())
         };
@@ -178,9 +174,8 @@ impl RRule {
         r.interval = get("INTERVAL").and_then(|v| v.parse().ok()).unwrap_or(1);
         r.count = get("COUNT").and_then(|v| v.parse().ok());
         r.until = get("UNTIL").map(|v| ICalDateTime::parse(v, None)).transpose()?;
-        r.by_day = get("BYDAY")
-            .map(|v| v.split(',').map(WeekdayNum::parse).collect::<Result<Vec<_>, _>>())
-            .transpose()?;
+        r.by_day =
+            get("BYDAY").map(|v| v.split(',').map(WeekdayNum::parse).collect::<Result<Vec<_>, _>>()).transpose()?;
         r.by_month_day = ints("BYMONTHDAY");
         r.by_month = ints("BYMONTH");
         r.by_week_no = ints("BYWEEKNO");

@@ -183,8 +183,7 @@ pub fn extract_calendar_id_from_href(href: &str) -> String {
         .unwrap_or_else(|| href.to_string())
 }
 
-static HEX_COLOR: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^#?([0-9A-Fa-f]{6,8})$").expect("valid regex"));
+static HEX_COLOR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^#?([0-9A-Fa-f]{6,8})$").expect("valid regex"));
 
 /// Normalize a calendar color to `#RRGGBB`.
 ///
@@ -208,12 +207,7 @@ pub trait CalDavClient: Send + Sync {
     async fn list_calendars(&self) -> CalDavResult<Vec<CalDavCalendar>>;
 
     /// Events of `calendar_id` overlapping `start_date..=end_date` (`YYYY-MM-DD`, UTC days).
-    async fn get_events(
-        &self,
-        calendar_id: &str,
-        start_date: &str,
-        end_date: &str,
-    ) -> CalDavResult<Vec<CalDavEvent>>;
+    async fn get_events(&self, calendar_id: &str, start_date: &str, end_date: &str) -> CalDavResult<Vec<CalDavEvent>>;
 
     /// Fetch one event resource by href (or absolute URL), with its current ETag.
     async fn get_event(&self, href: &str) -> CalDavResult<CalDavEvent>;
@@ -222,12 +216,7 @@ pub trait CalDavClient: Send + Sync {
     async fn create_event(&self, calendar_id: &str, ical_data: &str) -> CalDavResult<CalDavEvent>;
 
     /// Replace the resource at `href`, conditional on `etag` when given.
-    async fn update_event(
-        &self,
-        href: &str,
-        ical_data: &str,
-        etag: Option<&str>,
-    ) -> CalDavResult<CalDavEvent>;
+    async fn update_event(&self, href: &str, ical_data: &str, etag: Option<&str>) -> CalDavResult<CalDavEvent>;
 
     /// Delete the resource at `href`, conditional on `etag` when given.
     async fn delete_event(&self, href: &str, etag: Option<&str>) -> CalDavResult<()>;

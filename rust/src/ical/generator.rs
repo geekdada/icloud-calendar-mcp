@@ -73,7 +73,9 @@ fn push_event(out: &mut String, event: &ICalEvent) {
     for rdate in &event.rdates {
         push_date_property(out, "RDATE", rdate, "");
     }
-    for (name, value) in [("SUMMARY", &event.summary), ("DESCRIPTION", &event.description), ("LOCATION", &event.location)] {
+    for (name, value) in
+        [("SUMMARY", &event.summary), ("DESCRIPTION", &event.description), ("LOCATION", &event.location)]
+    {
         if let Some(value) = value {
             push_folded(out, &format!("{name}:{}", escape_text(value)));
         }
@@ -111,10 +113,8 @@ fn push_event(out: &mut String, event: &ICalEvent) {
 fn push_alarm(out: &mut String, alarm: &ICalAlarm) {
     let uid = alarm.uid.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string().to_uppercase());
     let has_raw = |name: &str| alarm.raw_properties.iter().any(|p| p.name == name);
-    let is_default_alarm = alarm
-        .raw_properties
-        .iter()
-        .any(|p| p.name == "DEFAULT-ALARM" && p.value.trim().eq_ignore_ascii_case("TRUE"));
+    let is_default_alarm =
+        alarm.raw_properties.iter().any(|p| p.name == "DEFAULT-ALARM" && p.value.trim().eq_ignore_ascii_case("TRUE"));
 
     push_line(out, "BEGIN:VALARM");
     push_folded(out, &format!("UID:{uid}"));
@@ -186,7 +186,9 @@ mod tests {
     #[test]
     fn writes_required_calendar_properties() {
         let ics = generate_calendar(&[sample()]);
-        assert!(ics.starts_with("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//OnekashMCP//AppleCalendarMCP 1.0//EN\r\nCALSCALE:GREGORIAN\r\n"));
+        assert!(ics.starts_with(
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//OnekashMCP//AppleCalendarMCP 1.0//EN\r\nCALSCALE:GREGORIAN\r\n"
+        ));
         assert!(!ics.contains("METHOD:"));
         assert!(ics.contains("STATUS:CONFIRMED\r\n"));
         assert!(ics.contains("SEQUENCE:0\r\n"));

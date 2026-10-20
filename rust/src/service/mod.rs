@@ -240,7 +240,12 @@ impl CalendarService {
     ///
     /// Fails with 413 rather than truncating when a single series expands past
     /// the expander's bound or the result exceeds [`MAX_RETURNED_EVENTS`].
-    pub async fn get_events(&self, calendar_id: &str, start_date: &str, end_date: &str) -> ServiceResult<Vec<EventInfo>> {
+    pub async fn get_events(
+        &self,
+        calendar_id: &str,
+        start_date: &str,
+        end_date: &str,
+    ) -> ServiceResult<Vec<EventInfo>> {
         let resources = self.client.get_events(calendar_id, start_date, end_date).await?;
         let range = DayRangeUtc::parse(start_date, end_date)
             .ok_or_else(|| ServiceError::new(400, "Invalid date format: expected YYYY-MM-DD"))?;
@@ -300,10 +305,21 @@ impl CalendarService {
     /// `event_id` is a handle (resolved from the server, no cache needed) or a
     /// legacy bare UID (resolved from the cache). An occurrence handle requires
     /// a `scope`; see [`check_write_scope`].
-    pub async fn update_event(&self, event_id: &str, patch: EventPatch, scope: Option<EventScope>) -> ServiceResult<EventInfo> {
+    pub async fn update_event(
+        &self,
+        event_id: &str,
+        patch: EventPatch,
+        scope: Option<EventScope>,
+    ) -> ServiceResult<EventInfo> {
         let handle = EventHandle::decode(event_id);
         let is_occurrence = handle.as_ref().is_some_and(EventHandle::is_occurrence_ref);
-        check_write_scope(scope, is_occurrence, patch.rrule.as_deref(), patch.rdates.as_deref(), patch.exdates.as_deref())?;
+        check_write_scope(
+            scope,
+            is_occurrence,
+            patch.rrule.as_deref(),
+            patch.rdates.as_deref(),
+            patch.exdates.as_deref(),
+        )?;
         let recurrence_id = handle.and_then(|h| h.recurrence_id).unwrap_or_default();
         match scope {
             Some(EventScope::ThisAndFuture) => self.update_this_and_future(event_id, &recurrence_id, &patch).await,
@@ -338,7 +354,11 @@ impl CalendarService {
     /// Run `write` against `target`; on a 412 refetch the resource once and run
     /// it again on the fresh body, which recomputes the payload so a concurrent
     /// change is not clobbered. At most one retry.
-    async fn with_stale_etag_retry(&self, target: CalDavEvent, write: RetryableWrite<'_>) -> ServiceResult<Option<EventInfo>> {
+    async fn with_stale_etag_retry(
+        &self,
+        target: CalDavEvent,
+        write: RetryableWrite<'_>,
+    ) -> ServiceResult<Option<EventInfo>> {
         let href = target.href.clone();
         let first = self.write_once(target, &write).await;
         match first {
@@ -377,20 +397,29 @@ impl CalendarService {
         self.remember(&updated);
         match write {
             RetryableWrite::Whole(patch) => {
-                let parsed =
-                    parse_events(&updated.ical_data).into_iter().next().or_else(|| parse_events(&ics).into_iter().next());
+                let parsed = parse_events(&updated.ical_data)
+                    .into_iter()
+                    .next()
+                    .or_else(|| parse_events(&ics).into_iter().next());
                 Ok(Some(match parsed {
                     Some(parsed) => to_event_info(&parsed, &updated),
                     None => synthesized(&updated, patch.summary.as_deref().unwrap_or(&updated.uid), None),
                 }))
             }
-            RetryableWrite::Occurrence { recurrence_id, .. } => occurrence_event_info(&updated, &ics, recurrence_id).map(Some),
+            RetryableWrite::Occurrence { recurrence_id, .. } => {
+                occurrence_event_info(&updated, &ics, recurrence_id).map(Some)
+            }
             RetryableWrite::Exdate { .. } => Ok(None),
         }
     }
 
     /// Edit one occurrence through a RECURRENCE-ID exception on the master.
-    async fn update_single_occurrence(&self, event_id: &str, recurrence_id: &str, patch: &EventPatch) -> ServiceResult<EventInfo> {
+    async fn update_single_occurrence(
+        &self,
+        event_id: &str,
+        recurrence_id: &str,
+        patch: &EventPatch,
+    ) -> ServiceResult<EventInfo> {
         let base = self.resolve_for_write(event_id).await?;
         let write = RetryableWrite::Occurrence { recurrence_id, patch };
         // Occurrence writes always produce an EventInfo.
@@ -405,7 +434,12 @@ impl CalendarService {
     /// occurrences exist twice (a visible duplicate) rather than not at all. On
     /// a 412 the truncation is recomputed on the fresh master; the new series
     /// is not recreated. At the first occurrence this is a whole-series edit.
-    async fn update_this_and_future(&self, event_id: &str, recurrence_id: &str, patch: &EventPatch) -> ServiceResult<EventInfo> {
+    async fn update_this_and_future(
+        &self,
+        event_id: &str,
+        recurrence_id: &str,
+        patch: &EventPatch,
+    ) -> ServiceResult<EventInfo> {
         let base = self.resolve_for_write(event_id).await?;
         if !is_live_occurrence(&base.ical_data, recurrence_id)? {
             return Err(stale_occurrence_error());
@@ -447,8 +481,8 @@ impl CalendarService {
             }
             Err(e) if e.code == 412 => {
                 let fresh = self.client.get_event(&target.href).await.map_err(|_| ServiceError::from(e.clone()))?;
-                let recomputed =
-                    patcher::truncate_series(Some(&fresh.ical_data), recurrence_id).map_err(|_| ServiceError::from(e.clone()))?;
+                let recomputed = patcher::truncate_series(Some(&fresh.ical_data), recurrence_id)
+                    .map_err(|_| ServiceError::from(e.clone()))?;
                 let updated = self.client.update_event(&fresh.href, &recomputed, fresh.etag.as_deref()).await?;
                 self.remember(&updated);
                 Ok(())
@@ -478,8 +512,9 @@ impl CalendarService {
         let (href, etag) = match EventHandle::decode(event_id) {
             Some(handle) => (handle.href, handle.etag),
             None => {
-                let cached =
-                    self.cached(event_id).ok_or_else(|| ServiceError::new(404, format!("Event not found: {event_id}")))?;
+                let cached = self
+                    .cached(event_id)
+                    .ok_or_else(|| ServiceError::new(404, format!("Event not found: {event_id}")))?;
                 (cached.href, cached.etag)
             }
         };

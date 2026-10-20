@@ -29,10 +29,7 @@ pub struct OperationCancelledError {
 
 impl OperationCancelledError {
     pub fn new(request_id: &str) -> Self {
-        Self {
-            request_id: request_id.to_string(),
-            message: format!("Operation cancelled: {request_id}"),
-        }
+        Self { request_id: request_id.to_string(), message: format!("Operation cancelled: {request_id}") }
     }
 }
 
@@ -54,11 +51,7 @@ pub struct CancellationToken {
 
 impl CancellationToken {
     fn new(request_id: &str) -> Self {
-        Self {
-            request_id: request_id.to_string(),
-            cancelled: AtomicBool::new(false),
-            created_at: Instant::now(),
-        }
+        Self { request_id: request_id.to_string(), cancelled: AtomicBool::new(false), created_at: Instant::now() }
     }
 
     pub fn is_cancelled(&self) -> bool {
@@ -76,11 +69,7 @@ impl CancellationToken {
 
     /// `Err` once the operation has been cancelled, for `?` in processing loops.
     pub fn check_cancelled(&self) -> Result<(), OperationCancelledError> {
-        if self.is_cancelled() {
-            Err(OperationCancelledError::new(&self.request_id))
-        } else {
-            Ok(())
-        }
+        if self.is_cancelled() { Err(OperationCancelledError::new(&self.request_id)) } else { Ok(()) }
     }
 }
 
@@ -93,36 +82,20 @@ pub struct CancellationManager {
 
 impl CancellationManager {
     pub fn new(logger: Option<Arc<McpLogger>>) -> Self {
-        Self {
-            logger,
-            ..Self::default()
-        }
+        Self { logger, ..Self::default() }
     }
 
     /// Start tracking `request_id` and return its token.
     pub fn start_operation(&self, request_id: &str) -> Arc<CancellationToken> {
         let token = Arc::new(CancellationToken::new(request_id));
-        self.active
-            .lock()
-            .expect("cancellation lock")
-            .insert(request_id.to_string(), Arc::clone(&token));
-        self.log(
-            LoggingLevel::Debug,
-            &format!("Started tracking operation: {request_id}"),
-            request_id,
-            None,
-        );
+        self.active.lock().expect("cancellation lock").insert(request_id.to_string(), Arc::clone(&token));
+        self.log(LoggingLevel::Debug, &format!("Started tracking operation: {request_id}"), request_id, None);
         token
     }
 
     /// Cancel `request_id` if it is active; unknown and completed ids are ignored.
     pub fn handle_cancellation(&self, request_id: &str, reason: Option<&str>) {
-        if self
-            .completed
-            .lock()
-            .expect("cancellation lock")
-            .contains_key(request_id)
-        {
+        if self.completed.lock().expect("cancellation lock").contains_key(request_id) {
             self.log(
                 LoggingLevel::Debug,
                 &format!("Ignoring cancellation for completed operation: {request_id}"),
@@ -131,12 +104,7 @@ impl CancellationManager {
             );
             return;
         }
-        let token = self
-            .active
-            .lock()
-            .expect("cancellation lock")
-            .get(request_id)
-            .cloned();
+        let token = self.active.lock().expect("cancellation lock").get(request_id).cloned();
         let Some(token) = token else {
             self.log(
                 LoggingLevel::Debug,
@@ -147,12 +115,7 @@ impl CancellationManager {
             return;
         };
         token.cancel();
-        self.log(
-            LoggingLevel::Info,
-            &format!("Operation cancelled: {request_id}"),
-            request_id,
-            Some(reason),
-        );
+        self.log(LoggingLevel::Info, &format!("Operation cancelled: {request_id}"), request_id, Some(reason));
     }
 
     /// Handle an MCP `notifications/cancelled` payload.
@@ -165,37 +128,21 @@ impl CancellationManager {
 
     /// Stop tracking `request_id` (success or failure) and remember it as completed.
     pub fn complete_operation(&self, request_id: &str) {
-        self.active
-            .lock()
-            .expect("cancellation lock")
-            .remove(request_id);
+        self.active.lock().expect("cancellation lock").remove(request_id);
         {
             let mut completed = self.completed.lock().expect("cancellation lock");
             completed.insert(request_id.to_string(), Instant::now());
             completed.retain(|_, at| at.elapsed() <= COMPLETED_RETENTION);
         }
-        self.log(
-            LoggingLevel::Debug,
-            &format!("Operation completed: {request_id}"),
-            request_id,
-            None,
-        );
+        self.log(LoggingLevel::Debug, &format!("Operation completed: {request_id}"), request_id, None);
     }
 
     pub fn is_cancelled(&self, request_id: &str) -> bool {
-        self.active
-            .lock()
-            .expect("cancellation lock")
-            .get(request_id)
-            .is_some_and(|t| t.is_cancelled())
+        self.active.lock().expect("cancellation lock").get(request_id).is_some_and(|t| t.is_cancelled())
     }
 
     pub fn token(&self, request_id: &str) -> Option<Arc<CancellationToken>> {
-        self.active
-            .lock()
-            .expect("cancellation lock")
-            .get(request_id)
-            .cloned()
+        self.active.lock().expect("cancellation lock").get(request_id).cloned()
     }
 
     pub fn active_count(&self) -> usize {
@@ -209,13 +156,7 @@ impl CancellationManager {
     }
 
     /// Log with `requestId` (and `reason` when the event has one).
-    fn log(
-        &self,
-        level: LoggingLevel,
-        message: &str,
-        request_id: &str,
-        reason: Option<Option<&str>>,
-    ) {
+    fn log(&self, level: LoggingLevel, message: &str, request_id: &str, reason: Option<Option<&str>>) {
         let Some(logger) = &self.logger else {
             return;
         };
@@ -405,8 +346,7 @@ mod tests {
             manager.start_operation(&id);
             let barrier = Arc::new(Barrier::new(2));
             let spawn = |complete: bool| {
-                let (manager, barrier, id) =
-                    (Arc::clone(&manager), Arc::clone(&barrier), id.clone());
+                let (manager, barrier, id) = (Arc::clone(&manager), Arc::clone(&barrier), id.clone());
                 thread::spawn(move || {
                     barrier.wait();
                     if complete {
@@ -426,9 +366,7 @@ mod tests {
         let handles: Vec<_> = (0..100)
             .map(|i| {
                 let manager = Arc::clone(&manager);
-                thread::spawn(move || {
-                    manager.handle_cancellation("multi-cancel", Some(&format!("Reason {i}")))
-                })
+                thread::spawn(move || manager.handle_cancellation("multi-cancel", Some(&format!("Reason {i}"))))
             })
             .collect();
         handles.into_iter().for_each(|h| h.join().unwrap());
@@ -466,11 +404,8 @@ mod tests {
         ));
         assert!(manager.is_cancelled("42"));
         manager.handle_notification(&CancelledNotificationParam::new(None, None));
-        let info: Vec<_> = sink
-            .records()
-            .into_iter()
-            .filter(|r| r.data["message"] == json!("Operation cancelled: 42"))
-            .collect();
+        let info: Vec<_> =
+            sink.records().into_iter().filter(|r| r.data["message"] == json!("Operation cancelled: 42")).collect();
         assert_eq!(info.len(), 1);
         assert_eq!(info[0].data["reason"], json!("user"));
     }
