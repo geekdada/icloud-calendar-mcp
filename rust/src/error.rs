@@ -367,7 +367,9 @@ pub fn service_error(code: u16, message: &str) -> CallToolResult {
         401 => ErrorCode::AuthenticationError,
         403 => ErrorCode::AuthorizationError,
         404 => ErrorCode::NotFound,
-        409 => ErrorCode::Conflict,
+        // A 412 that survives the service's one refetch-and-retry means the
+        // event changed since the caller's handle was issued: a conflict.
+        409 | 412 => ErrorCode::Conflict,
         413 => ErrorCode::PayloadTooLarge,
         429 => ErrorCode::RateLimited,
         500..=599 => ErrorCode::CaldavError,
@@ -763,7 +765,7 @@ mod tests {
         assert_eq!(code_of(413), "PAYLOAD_TOO_LARGE");
         assert_eq!(code_of(429), "RATE_LIMITED");
         assert_eq!(code_of(503), "CALDAV_ERROR");
-        assert_eq!(code_of(412), "INTERNAL_ERROR");
+        assert_eq!(code_of(412), "CONFLICT");
         assert_eq!(code_of(0), "INTERNAL_ERROR");
     }
 

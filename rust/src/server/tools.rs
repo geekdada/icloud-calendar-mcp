@@ -14,7 +14,7 @@ use super::args::{self, Args};
 use crate::error;
 use crate::ics::{EventPatch, NewEvent, ParsedAlarm};
 use crate::scope::EventScope;
-use crate::service::{EventInfo, ServiceError};
+use crate::service::EventInfo;
 use crate::validation::{self as v, collect_errors};
 
 const NOT_CONFIGURED: &str = "iCloud credentials not configured";
@@ -227,15 +227,6 @@ fn delete_event_tool() -> Tool {
     )
 }
 
-/// The error result for a service failure. A 412 that survives the service's
-/// one refetch-and-retry means the event changed since the caller's handle was
-/// issued, which callers must see as a conflict (re-list and retry), not as an
-/// internal error.
-fn service_failure(e: &ServiceError) -> CallToolResult {
-    let code = if e.code == 412 { 409 } else { e.code };
-    error::service_error(code, &e.message)
-}
-
 /// A success result whose text is the compact JSON of `body`, also returned
 /// as structured content.
 fn json_result(body: Map<String, Value>) -> CallToolResult {
@@ -345,7 +336,7 @@ impl CalendarServer {
                 body.insert("calendars".into(), Value::Array(list));
                 json_result(body)
             }
-            Err(e) => service_failure(&e),
+            Err(e) => error::service_error(e.code, &e.message),
         }
     }
 
@@ -380,7 +371,7 @@ impl CalendarServer {
                 body.insert("events".into(), Value::Array(events.iter().map(event_json).collect()));
                 json_result(body)
             }
-            Err(e) => service_failure(&e),
+            Err(e) => error::service_error(e.code, &e.message),
         }
     }
 
@@ -488,7 +479,7 @@ impl CalendarServer {
                     "Event creation failed",
                     &[("tool", json!("create_event")), ("calendar", json!(calendar_id)), ("code", json!(e.code))],
                 );
-                service_failure(&e)
+                error::service_error(e.code, &e.message)
             }
         }
     }
@@ -601,7 +592,7 @@ impl CalendarServer {
                     "Event update failed",
                     &[("tool", json!("update_event")), ("eventId", json!(event_id)), ("code", json!(e.code))],
                 );
-                service_failure(&e)
+                error::service_error(e.code, &e.message)
             }
         }
     }
@@ -639,7 +630,7 @@ impl CalendarServer {
                     "Event deletion failed",
                     &[("tool", json!("delete_event")), ("eventId", json!(event_id)), ("code", json!(e.code))],
                 );
-                service_failure(&e)
+                error::service_error(e.code, &e.message)
             }
         }
     }
