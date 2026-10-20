@@ -14,7 +14,7 @@ use super::args::{self, Args};
 use crate::error;
 use crate::ics::{EventPatch, NewEvent, ParsedAlarm};
 use crate::scope::EventScope;
-use crate::service::{CalendarService, EventInfo};
+use crate::service::{EventInfo, ServiceError};
 use crate::validation::{self as v, collect_errors};
 
 const NOT_CONFIGURED: &str = "iCloud credentials not configured";
@@ -34,7 +34,14 @@ pub fn definitions() -> Vec<Tool> {
     vec![list_calendars_tool(), get_events_tool(), create_event_tool(), update_event_tool(), delete_event_tool()]
 }
 
-fn tool(name: &'static str, title: &str, description: &'static str, input: Value, output: Value, annotations: ToolAnnotations) -> Tool {
+fn tool(
+    name: &'static str,
+    title: &str,
+    description: &'static str,
+    input: Value,
+    output: Value,
+    annotations: ToolAnnotations,
+) -> Tool {
     Tool::new(name, description, Arc::new(as_object(input)))
         .with_title(title)
         .with_raw_output_schema(Arc::new(as_object(output)))
@@ -220,6 +227,15 @@ fn delete_event_tool() -> Tool {
     )
 }
 
+/// The error result for a service failure. A 412 that survives the service's
+/// one refetch-and-retry means the event changed since the caller's handle was
+/// issued, which callers must see as a conflict (re-list and retry), not as an
+/// internal error.
+fn service_failure(e: &ServiceError) -> CallToolResult {
+    let code = if e.code == 412 { 409 } else { e.code };
+    error::service_error(code, &e.message)
+}
+
 /// A success result whose text is the compact JSON of `body`, also returned
 /// as structured content.
 fn json_result(body: Map<String, Value>) -> CallToolResult {
@@ -301,18 +317,13 @@ macro_rules! read_args {
 }
 
 impl CalendarServer {
-    fn service_or_auth_error(&self) -> Result<&Arc<CalendarService>, CallToolResult> {
-        self.service.as_ref().ok_or_else(|| error::authentication_error(NOT_CONFIGURED))
-    }
-
     pub(super) async fn list_calendars(&self) -> CallToolResult {
         let rate = self.rate_limiter.acquire_read_with_status();
         if !rate.allowed {
             return error::rate_limit_error(rate.retry_after_ms);
         }
-        let service = match self.service_or_auth_error() {
-            Ok(service) => service,
-            Err(result) => return result,
+        let Some(service) = self.service.as_ref() else {
+            return error::authentication_error(NOT_CONFIGURED);
         };
         match service.list_calendars().await {
             Ok(calendars) => {
@@ -334,7 +345,7 @@ impl CalendarServer {
                 body.insert("calendars".into(), Value::Array(list));
                 json_result(body)
             }
-            Err(e) => error::service_error(e.code, &e.message),
+            Err(e) => service_failure(&e),
         }
     }
 
@@ -358,9 +369,8 @@ impl CalendarServer {
         if !errors.is_empty() {
             return error::validation_error(&errors);
         }
-        let service = match self.service_or_auth_error() {
-            Ok(service) => service,
-            Err(result) => return result,
+        let Some(service) = self.service.as_ref() else {
+            return error::authentication_error(NOT_CONFIGURED);
         };
         let (calendar_id, start_date, end_date) =
             (calendar_id.unwrap_or_default(), start_date.unwrap_or_default(), end_date.unwrap_or_default());
@@ -370,7 +380,7 @@ impl CalendarServer {
                 body.insert("events".into(), Value::Array(events.iter().map(event_json).collect()));
                 json_result(body)
             }
-            Err(e) => error::service_error(e.code, &e.message),
+            Err(e) => service_failure(&e),
         }
     }
 
@@ -434,9 +444,8 @@ impl CalendarServer {
         if !errors.is_empty() {
             return error::validation_error(&errors);
         }
-        let service = match self.service_or_auth_error() {
-            Ok(service) => service,
-            Err(result) => return result,
+        let Some(service) = self.service.as_ref() else {
+            return error::authentication_error(NOT_CONFIGURED);
         };
 
         let calendar_id = calendar_id.unwrap_or_default();
@@ -479,7 +488,7 @@ impl CalendarServer {
                     "Event creation failed",
                     &[("tool", json!("create_event")), ("calendar", json!(calendar_id)), ("code", json!(e.code))],
                 );
-                error::service_error(e.code, &e.message)
+                service_failure(&e)
             }
         }
     }
@@ -538,14 +547,19 @@ impl CalendarServer {
             v::validate_scope(scope.as_deref(), "scope"),
             // Mirrors the service-layer check: an occurrence scope must not
             // carry series-level fields.
-            v::validate_occurrence_scope_fields(scope.as_deref(), rrule.as_deref(), rdates.as_deref(), exdates.as_deref(), "scope"),
+            v::validate_occurrence_scope_fields(
+                scope.as_deref(),
+                rrule.as_deref(),
+                rdates.as_deref(),
+                exdates.as_deref(),
+                "scope",
+            ),
         ]));
         if !errors.is_empty() {
             return error::validation_error(&errors);
         }
-        let service = match self.service_or_auth_error() {
-            Ok(service) => service,
-            Err(result) => return result,
+        let Some(service) = self.service.as_ref() else {
+            return error::authentication_error(NOT_CONFIGURED);
         };
 
         let event_id = event_id.unwrap_or_default();
@@ -587,7 +601,7 @@ impl CalendarServer {
                     "Event update failed",
                     &[("tool", json!("update_event")), ("eventId", json!(event_id)), ("code", json!(e.code))],
                 );
-                error::service_error(e.code, &e.message)
+                service_failure(&e)
             }
         }
     }
@@ -608,9 +622,8 @@ impl CalendarServer {
         if !errors.is_empty() {
             return error::validation_error(&errors);
         }
-        let service = match self.service_or_auth_error() {
-            Ok(service) => service,
-            Err(result) => return result,
+        let Some(service) = self.service.as_ref() else {
+            return error::authentication_error(NOT_CONFIGURED);
         };
         let event_id = event_id.unwrap_or_default();
         match service.delete_event(&event_id, EventScope::from_token(scope.as_deref())).await {
@@ -626,7 +639,7 @@ impl CalendarServer {
                     "Event deletion failed",
                     &[("tool", json!("delete_event")), ("eventId", json!(event_id)), ("code", json!(e.code))],
                 );
-                error::service_error(e.code, &e.message)
+                service_failure(&e)
             }
         }
     }
