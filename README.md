@@ -110,6 +110,16 @@ cd icloud-calendar-mcp
 java -jar build/libs/icloud-calendar-mcp-*-all.jar
 ```
 
+#### Option 5: Native binary (Rust port)
+
+A Rust port in [`rust/`](rust/README.md) builds a single native binary with the same tools, resource and prompts. It needs no JVM:
+
+```bash
+cd rust
+cargo build --release
+./target/release/icloud-calendar-mcp
+```
+
 ### Configuration
 
 Set your iCloud credentials as environment variables:
