@@ -301,6 +301,8 @@ macro_rules! read_args {
 }
 
 impl CalendarServer {
+    // The error is returned to the MCP client as-is; boxing it buys nothing.
+    #[allow(clippy::result_large_err)]
     fn service_or_auth_error(&self) -> Result<&Arc<CalendarService>, CallToolResult> {
         self.service.as_ref().ok_or_else(|| error::authentication_error(NOT_CONFIGURED))
     }
