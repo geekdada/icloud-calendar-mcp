@@ -127,8 +127,18 @@ impl RateLimiter {
 
 /// Take one token if any remain. A compare-and-swap loop, so concurrent callers
 /// can never push the count past `limit`.
+///
+/// Written out by hand: `fetch_update` is deprecated on current stable, and its
+/// replacement `try_update` is newer than the crate's `rust-version`.
 fn acquire(counter: &AtomicU32, limit: u32) -> bool {
-    counter.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| (count < limit).then_some(count + 1)).is_ok()
+    let mut count = counter.load(Ordering::SeqCst);
+    while count < limit {
+        match counter.compare_exchange_weak(count, count + 1, Ordering::SeqCst, Ordering::SeqCst) {
+            Ok(_) => return true,
+            Err(actual) => count = actual,
+        }
+    }
+    false
 }
 
 #[cfg(test)]
