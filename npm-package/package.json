@@ -1,7 +1,7 @@
 {
-  "name": "@icloud-calendar-mcp/server",
+  "name": "@royli/icloud-calendar-mcp",
   "version": "3.2.0",
-  "mcpName": "org.onekash/icloud-calendar-mcp",
+  "mcpName": "dev.royli/icloud-calendar-mcp",
   "description": "MCP server for iCloud Calendar access via CalDAV",
   "keywords": [
     "mcp",
@@ -16,23 +16,24 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp.git"
+    "url": "https://github.com/geekdada/icloud-calendar-mcp.git"
   },
-  "homepage": "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp",
+  "homepage": "https://github.com/geekdada/icloud-calendar-mcp",
   "bugs": {
-    "url": "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/issues"
+    "url": "https://github.com/geekdada/icloud-calendar-mcp/issues"
   },
   "bin": {
     "icloud-calendar-mcp": "./bin/cli.js"
   },
   "files": [
     "bin/",
-    "lib/",
+    "lib/*.js",
+    "lib/SHA256SUMS",
     "README.md"
   ],
   "scripts": {
     "postinstall": "node lib/postinstall.js",
-    "test": "node bin/cli.js --version"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18.0.0"

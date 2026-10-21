@@ -1,28 +1,28 @@
 # iCloud Calendar MCP Server
 
-[![npm](https://img.shields.io/npm/v/@icloud-calendar-mcp/server.svg)](https://www.npmjs.com/package/@icloud-calendar-mcp/server)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/blob/main/LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-843%20passing-brightgreen.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp)
-[![Security](https://img.shields.io/badge/Security-OWASP%20MCP%20Top%2010-blue.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/blob/main/SECURITY.md)
+[![npm](https://img.shields.io/npm/v/@royli/icloud-calendar-mcp.svg)](https://www.npmjs.com/package/@royli/icloud-calendar-mcp)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/geekdada/icloud-calendar-mcp/blob/main/LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-1387%20passing-brightgreen.svg)](https://github.com/geekdada/icloud-calendar-mcp)
+[![Security](https://img.shields.io/badge/Security-OWASP%20MCP%20Top%2010-blue.svg)](https://github.com/geekdada/icloud-calendar-mcp/blob/main/SECURITY.md)
 
 An MCP (Model Context Protocol) server for iCloud Calendar access via CalDAV.
 
 ## Installation
 
 ```bash
-npx @icloud-calendar-mcp/server
+npx @royli/icloud-calendar-mcp
 ```
 
 Or install globally:
 
 ```bash
-npm install -g @icloud-calendar-mcp/server
+npm install -g @royli/icloud-calendar-mcp
 icloud-calendar-mcp
 ```
 
 ## Requirements
 
-- **Java 21+** (the server runs as a Java JAR)
+- Node.js 18+, on Linux (x64, arm64), macOS (Intel, Apple silicon) or Windows (x64). The package downloads the native server binary for your platform from the GitHub release and verifies its SHA-256 checksum; no Java is needed.
 - iCloud account with [app-specific password](https://support.apple.com/en-us/HT204397)
 
 ## Setup
@@ -49,7 +49,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "icloud-calendar": {
       "command": "npx",
-      "args": ["@icloud-calendar-mcp/server"],
+      "args": ["@royli/icloud-calendar-mcp"],
       "env": {
         "ICLOUD_USERNAME": "your-apple-id@icloud.com",
         "ICLOUD_PASSWORD": "your-app-specific-password"
@@ -90,9 +90,8 @@ This server is designed with security as a primary concern:
 
 ## Links
 
-- [GitHub Repository](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp)
-- [PyPI Package](https://pypi.org/project/icloud-calendar-mcp/)
-- [Security Policy](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/blob/main/SECURITY.md)
+- [GitHub Repository](https://github.com/geekdada/icloud-calendar-mcp)
+- [Security Policy](https://github.com/geekdada/icloud-calendar-mcp/blob/main/SECURITY.md)
 - [MCP Documentation](https://modelcontextprotocol.io)
 
 ## License

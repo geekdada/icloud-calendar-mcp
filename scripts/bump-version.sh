@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # Set the project version everywhere it is committed, from one argument.
 #
-# build.gradle.kts is the source of truth; the npm and PyPI shims must agree with
-# it (their downloads are version-pinned to match their own package). Two things
-# are deliberately NOT touched: the docs carry no version (they use the constant
-# releases/latest/download asset name and build/libs globs), and the server reads
-# its own version from the JAR manifest at runtime.
+# rust/Cargo.toml is the source of truth; the npm wrapper must agree with it,
+# because it downloads the binaries from the release named after its own
+# version. The docs contain no version. They link the constant
+# releases/latest/download asset names.
 #
 # After running this, commit the result and tag v<version>. CI enforces the rest:
 # scripts/check-version.sh fails a PR on any drift, and the release workflow refuses
-# to build if the tag does not match build.gradle.kts.
+# to build if the tag does not match rust/Cargo.toml.
 #
 # Uses perl for in-place edits so it works the same on GNU and BSD (macOS) userlands.
 set -euo pipefail
@@ -27,16 +26,11 @@ edit() {  # edit <file> <perl-expression>
   echo "  updated $1"
 }
 
-edit build.gradle.kts                                 "s/^version = \".*\"/version = \"$new\"/"
 edit rust/Cargo.toml                                  "s/^version = \".*\"/version = \"$new\"/ if \$. <= 5"
 perl -0 -i -pe "s/(name = \"icloud-calendar-mcp\"\nversion = \")[^\"]*\"/\${1}$new\"/" rust/Cargo.lock
 echo "  updated rust/Cargo.lock"
 edit server.json                                      "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/g"
 edit npm-package/package.json                         "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/"
-edit py-package/pyproject.toml                        "s/^version = \".*\"/version = \"$new\"/"
-edit py-package/src/icloud_calendar_mcp/__init__.py   "s/^__version__ = \".*\"/__version__ = \"$new\"/"
-edit py-package/src/icloud_calendar_mcp/downloader.py "s/^VERSION = \".*\"/VERSION = \"$new\"/"
-edit py-package/src/icloud_calendar_mcp/cli.py        "s/^JAR_NAME = \"icloud-calendar-mcp-.*-all\.jar\"/JAR_NAME = \"icloud-calendar-mcp-$new-all.jar\"/"
 
 echo ""
 echo "Bumped to $new. Verifying..."

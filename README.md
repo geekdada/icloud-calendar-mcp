@@ -4,11 +4,10 @@
 
 <h1 align="center">iCloud Calendar MCP Server</h1>
 
-[![Tests](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/test.yml)
-[![npm](https://img.shields.io/npm/v/@icloud-calendar-mcp/server.svg)](https://www.npmjs.com/package/@icloud-calendar-mcp/server)
-[![PyPI](https://img.shields.io/pypi/v/icloud-calendar-mcp.svg)](https://pypi.org/project/icloud-calendar-mcp/)
+[![Tests](https://github.com/geekdada/icloud-calendar-mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/geekdada/icloud-calendar-mcp/actions/workflows/rust.yml)
+[![npm](https://img.shields.io/npm/v/@royli/icloud-calendar-mcp.svg)](https://www.npmjs.com/package/@royli/icloud-calendar-mcp)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/?search=org.onekash)
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/?search=dev.royli)
 [![Security](https://img.shields.io/badge/Security-OWASP%20MCP%20Top%2010-blue.svg)](#security)
 
 An MCP (Model Context Protocol) server that gives AI assistants access to iCloud Calendar via CalDAV, with security controls aligned with the [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/).
@@ -18,12 +17,12 @@ An MCP (Model Context Protocol) server that gives AI assistants access to iCloud
 
 ## Why this server
 
-- **Portable CalDAV.** Runs anywhere a JVM runs. It does not depend on macOS, AppleScript, or Calendar.app.
+- **Portable CalDAV.** A single native binary for Linux, macOS, and Windows, with no runtime to install. It does not depend on macOS, AppleScript, or Calendar.app.
 - **Durable event handles.** `get_events` and `create_event` return an opaque `handle` that references an event across sessions and process restarts, so editing or deleting one needs no re-listing.
 - **Correct recurrence.** A series expands into one result per occurrence in the range, and you can edit or delete a single occurrence, this-and-future, or the whole series.
 - **Bounded responses.** Date-span and event-count caps return a clear, structured error instead of a silently truncated response.
 - **Security aligned with the OWASP MCP Top 10**, backed by a dedicated test suite.
-- **Published on the MCP Registry, npm, and PyPI.**
+- **Published on the MCP Registry and npm.**
 
 ## Features
 
@@ -59,7 +58,7 @@ User-initiated templates that guide Claude through a multi-step task:
 - **Input Validation** - All parameters validated with SSRF protection
 - **Rate Limiting** - 60 reads/min, 20 writes/min per MCP specification
 - **Secure Error Handling** - No sensitive data leakage in error messages
-- **OWASP MCP Top 10 Compliance** - 282 security tests covering all major risks
+- **OWASP MCP Top 10 Compliance** - 158 security tests covering all major risks
 - **ReDoS Protection** - All regex patterns tested against catastrophic backtracking
 - **Unicode Security** - Protection against homoglyph and encoding attacks
 
@@ -69,53 +68,47 @@ User-initiated templates that guide Claude through a multi-step task:
 
 ### Prerequisites
 
-- **Java 21+** (for all installation methods)
 - iCloud account with [app-specific password](https://support.apple.com/en-us/HT204397)
+- No Java or other runtime for the server itself. `npx` needs Node.js 18+ and runs the same native binary. Prebuilt binaries cover Linux (x64, arm64), macOS (Intel, Apple silicon), and Windows (x64).
 
 ### Installation
 
-Choose your preferred installation method:
-
-> [!IMPORTANT]
-> Every option runs the same Java build. **Java 21 or newer must be on your `PATH`, including for `npx` and `uvx`.** Those wrappers download and launch the JAR; they do not replace the JVM.
+Choose your preferred installation method. The npm package downloads the binary for your platform from the GitHub release and verifies its SHA-256 checksum.
 
 #### Option 1: npm (Recommended)
 
 ```bash
-npx @icloud-calendar-mcp/server
+npx @royli/icloud-calendar-mcp
 ```
 
-#### Option 2: Python (uvx)
+#### Option 2: Direct download
+
+Download the binary for your platform from the [latest release](https://github.com/geekdada/icloud-calendar-mcp/releases/latest). Each release also includes a `SHA256SUMS` file.
+
+| Platform | Asset |
+|----------|-------|
+| Linux x64 | `icloud-calendar-mcp-x86_64-unknown-linux-musl` |
+| Linux arm64 | `icloud-calendar-mcp-aarch64-unknown-linux-musl` |
+| macOS Intel | `icloud-calendar-mcp-x86_64-apple-darwin` |
+| macOS Apple silicon | `icloud-calendar-mcp-aarch64-apple-darwin` |
+| Windows x64 | `icloud-calendar-mcp-x86_64-pc-windows-msvc.exe` |
 
 ```bash
-uvx icloud-calendar-mcp
+# Example: macOS on Apple silicon
+curl -Lo icloud-calendar-mcp https://github.com/geekdada/icloud-calendar-mcp/releases/latest/download/icloud-calendar-mcp-aarch64-apple-darwin
+chmod +x icloud-calendar-mcp
+./icloud-calendar-mcp
 ```
 
-#### Option 3: Direct JAR
+The binaries are not code-signed. On macOS, a binary downloaded with a browser is quarantined; clear it with `xattr -d com.apple.quarantine icloud-calendar-mcp`.
+
+#### Option 3: Build from source
+
+Requires a [Rust toolchain](https://rustup.rs) (1.85 or newer):
 
 ```bash
-# Download the latest release (version-agnostic name, always resolves)
-curl -LO https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/releases/latest/download/icloud-calendar-mcp-all.jar
-
-# Run
-java -jar icloud-calendar-mcp-all.jar
-```
-
-#### Option 4: Build from Source
-
-```bash
-git clone https://github.com/icloud-calendar-mcp/icloud-calendar-mcp.git
-cd icloud-calendar-mcp
-./gradlew fatJar
-java -jar build/libs/icloud-calendar-mcp-*-all.jar
-```
-
-#### Option 5: Native binary (Rust port)
-
-A Rust port in [`rust/`](rust/README.md) builds a single native binary with the same tools, resource and prompts. It needs no JVM:
-
-```bash
-cd rust
+git clone https://github.com/geekdada/icloud-calendar-mcp.git
+cd icloud-calendar-mcp/rust
 cargo build --release
 ./target/release/icloud-calendar-mcp
 ```
@@ -151,7 +144,7 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "icloud-calendar": {
       "command": "npx",
-      "args": ["@icloud-calendar-mcp/server"],
+      "args": ["@royli/icloud-calendar-mcp"],
       "env": {
         "ICLOUD_USERNAME": "your-apple-id@icloud.com",
         "ICLOUD_PASSWORD": "your-app-specific-password"
@@ -163,33 +156,13 @@ Add to your Claude Desktop configuration:
 </details>
 
 <details>
-<summary><strong>Using uvx (Python)</strong></summary>
+<summary><strong>Using the binary directly</strong></summary>
 
 ```json
 {
   "mcpServers": {
     "icloud-calendar": {
-      "command": "uvx",
-      "args": ["icloud-calendar-mcp"],
-      "env": {
-        "ICLOUD_USERNAME": "your-apple-id@icloud.com",
-        "ICLOUD_PASSWORD": "your-app-specific-password"
-      }
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Using JAR directly</strong></summary>
-
-```json
-{
-  "mcpServers": {
-    "icloud-calendar": {
-      "command": "java",
-      "args": ["-jar", "/path/to/icloud-calendar-mcp-all.jar"],
+      "command": "/path/to/icloud-calendar-mcp",
       "env": {
         "ICLOUD_USERNAME": "your-apple-id@icloud.com",
         "ICLOUD_PASSWORD": "your-app-specific-password"
@@ -358,17 +331,17 @@ The server talks only to your machine (over STDIO) and to iCloud (`caldav.icloud
 
 ### OWASP MCP Top 10 Coverage
 
-| Risk | Mitigation | Tests |
-|------|------------|-------|
-| **MCP01: Token Mismanagement** | Credentials masked in logs/errors, secure storage | 14 |
-| **MCP02: Privilege Escalation** | Fixed tool set, no dynamic registration | 5 |
-| **MCP03: Tool Argument Injection** | Input validation, parameterized operations | 8 |
-| **MCP04: Sensitive Data Exposure** | Error sanitization, credential masking | 10 |
-| **MCP05: Command Injection** | Input treated as data, not executed | 3 |
-| **MCP06: Prompt Injection** | Malicious text stored as data, not interpreted | 3 |
-| **MCP08: Insecure Logging** | Rate limiting, sensitive data sanitization | 31 |
-| **MCP09: Resource Exhaustion** | Rate limiting, input size limits, DoS protection | 25 |
-| **MCP10: Context Over-sharing** | Isolated state, no cross-request data leakage | 3 |
+| Risk | Mitigation |
+|------|------------|
+| **MCP01: Token Mismanagement** | Credentials masked in logs/errors, secure storage |
+| **MCP02: Privilege Escalation** | Fixed tool set, no dynamic registration |
+| **MCP03: Tool Argument Injection** | Input validation, parameterized operations |
+| **MCP04: Sensitive Data Exposure** | Error sanitization, credential masking |
+| **MCP05: Command Injection** | Input treated as data, not executed |
+| **MCP06: Prompt Injection** | Malicious text stored as data, not interpreted |
+| **MCP08: Insecure Logging** | Rate limiting, sensitive data sanitization |
+| **MCP09: Resource Exhaustion** | Rate limiting, input size limits, DoS protection |
+| **MCP10: Context Over-sharing** | Isolated state, no cross-request data leakage |
 
 See [SECURITY.md](SECURITY.md) for full security documentation and vulnerability disclosure process.
 
@@ -376,68 +349,47 @@ See [SECURITY.md](SECURITY.md) for full security documentation and vulnerability
 
 ## Testing
 
-Tests live in two places: the MCP server module and the vendored `icaldav-core`
-iCalendar library. Both run with:
+All tests live in the Rust crate and run without network access (CalDAV traffic is mocked):
 
 ```bash
-./gradlew test
+cd rust
+cargo test
 ```
 
-### Test Coverage (MCP server)
+### Test Coverage
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| **Security** | 282 | Adversarial inputs, OWASP MCP Top 10, ReDoS, Unicode |
-| **CalDAV Protocol** | 181 | XML parsing, HTTP client, models, ETag normalization |
-| **ICS Format** | 150 | RFC 5545 parsing, building, patching |
-| **Error Handling** | 56 | Secure error responses, credential sanitization |
-| **Integration** | 45 | End-to-end tools, MCP spec compliance, annotations |
-| **Input Validation** | 44 | All parameter validation rules |
-| **Service Layer** | 26 | Calendar operations, caching |
-| **Rate Limiting** | 18 | Concurrent access, window reset |
-| **Cancellation** | 12 | Operation cancellation, cleanup |
-| **Logging** | 9 | MCP logging compliance |
-| **Progress** | 9 | Progress reporting |
-| **E2E** | 11 | Live CalDAV + end-to-end integration |
-
-### Security Test Categories
-
-| Category | Tests | Coverage |
-|----------|-------|----------|
-| **Adversarial Inputs** | 53 | SQL/NoSQL injection, XSS, path traversal |
-| **ICS Patcher Security** | 43 | CRLF injection, property injection, encoding attacks |
-| **Unicode Security** | 38 | Homoglyphs, normalization, RTL override |
-| **Logger Security** | 31 | Log injection, credential sanitization |
-| **OWASP MCP Risks** | 29 | MCP01-10 specific attack vectors |
-| **Progress Security** | 27 | Token enumeration, injection |
-| **ReDoS Protection** | 25 | Catastrophic backtracking, resource exhaustion |
-| **Cancellation Security** | 22 | Replay attacks, race conditions |
-| **Credential Security** | 14 | Token masking, secure storage |
+| **Unit tests** | 291 | XML parsing, ETag normalization, error sanitization, logging, rate limiting, cancellation, progress, credentials |
+| **iCalendar** | 223 | Content-line parsing, generation, VTIMEZONE, alarms, durations, RFC 5545/9074 and CalConnect samples |
+| **Recurrence** | 202 | RRULE, RDATE, and EXDATE expansion, overrides, leap years, work bounds |
+| **ICS Format** | 163 | Parsing, building, patching, per-occurrence expansion, RFC 5545 property audit |
+| **Security** | 158 | Adversarial inputs, OWASP MCP Top 10, CRLF and property injection, ReDoS, Unicode, hostile calendars |
+| **MCP Server** | 119 | Tool integration, MCP spec compliance, prompts, structured content, annotations, STDIO purity |
+| **Service Layer** | 113 | Calendar operations, event handles, caching, `get_events` caps and range filter |
+| **CalDAV Protocol** | 77 | HTTP client against a mock server, models |
+| **Input Validation** | 41 | All parameter validation rules, including alarms |
+| **Live iCloud** | 13 | Round trips against real iCloud; ignored unless run explicitly |
 
 ### Running Specific Tests
 
 ```bash
-# All tests
-./gradlew test
+cd rust
 
-# Security tests only
-./gradlew test --tests "*SecurityTest*"
-./gradlew test --tests "AdversarialTest"
+# One test file
+cargo test --test security_owasp_mcp
 
-# OWASP MCP specific tests
-./gradlew test --tests "OwaspMcpSecurityTest"
+# Security suites
+cargo test --test security_adversarial --test security_owasp_mcp --test ics_patcher_adversarial --test ics_redos_unicode
 
-# Unicode security tests
-./gradlew test --tests "UnicodeSecurityTest"
+# Tests with a string in their name
+cargo test caldav
 
-# ReDoS protection tests
-./gradlew test --tests "ReDoSSecurityTest"
+# The same suite in a non-UTC zone
+TZ=Asia/Seoul cargo test
 
-# CalDAV tests
-./gradlew test --tests "*CalDav*"
-
-# ICS tests
-./gradlew test --tests "*Ics*"
+# Live iCloud round trips (creates and deletes MCP-LIVE: events)
+ICLOUD_USERNAME=... ICLOUD_PASSWORD=... cargo test --test live_icloud -- --ignored --test-threads=1
 ```
 
 ---
@@ -475,13 +427,13 @@ iCalendar library. Both run with:
 |                      CalDAV Client Layer                           |
 |                                                                    |
 |  +-------------------+  +-------------------+  +----------------+  |
-|  | OkHttpCalDav      |  |  IcsParser        |  |  IcsBuilder    |  |
-|  | Client            |  |  (icaldav-core)   |  |  (icaldav-core)|  |
+|  | HttpCalDav        |  |  IcsParser        |  |  IcsBuilder    |  |
+|  | Client (reqwest)  |  |  (ical/)          |  |  (ical/)       |  |
 |  +-------------------+  +-------------------+  +----------------+  |
 |                                                                    |
 |  +-------------------+  +-------------------+  +----------------+  |
-|  | ICloudXml         |  |  IcsPatcher       |  |  EtagUtils     |  |
-|  | Parser            |  |  (event edits)    |  |  (RFC 7232)    |  |
+|  | iCloud XML        |  |  IcsPatcher       |  |  ETag          |  |
+|  | Parser (roxmltree)|  |  (event edits)    |  |  (RFC 7232)    |  |
 |  +-------------------+  +-------------------+  +----------------+  |
 |                                                                    |
 |  +-------------------+                                             |
@@ -504,58 +456,45 @@ iCalendar library. Both run with:
 ### Build
 
 ```bash
-# Build
-./gradlew build
-
-# Build fat JAR
-./gradlew fatJar
-
-# Run tests
-./gradlew test
-
-# Clean build
-./gradlew clean build
+cd rust
+cargo build --release          # binary at target/release/icloud-calendar-mcp
+cargo test
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
 ```
+
+See [`rust/README.md`](rust/README.md) for the module layout.
 
 ### Project Structure
 
 ```
-src/main/kotlin/org/onekash/mcp/calendar/
-├── Main.kt                 # MCP server entry point
-├── caldav/                 # CalDAV protocol implementation
-│   ├── CalDavClient.kt     # Client interface
-│   ├── CalDavModels.kt     # Domain models
-│   ├── OkHttpCalDavClient.kt
-│   ├── ICloudXmlParser.kt
-│   └── EtagUtils.kt        # RFC 7232 ETag normalization
-├── ics/                    # ICS format handling (via icaldav-core)
-│   ├── IcsParser.kt        # Parse iCalendar data
-│   ├── IcsBuilder.kt       # Generate iCalendar data
-│   └── IcsPatcher.kt       # Patch existing events (CRLF-safe)
-├── service/                # Business logic
-│   └── CalendarService.kt  # CalDAV orchestration + event cache
-├── security/               # Security controls
-│   └── CredentialManager.kt
-├── validation/             # Input validation
-│   └── InputValidator.kt
-├── error/                  # Error handling
-│   └── SecureErrorHandler.kt
-├── ratelimit/              # Rate limiting
-│   └── RateLimiter.kt
-├── logging/                # MCP logging
-│   └── McpLogger.kt
-├── progress/               # Progress reporting
-│   └── ProgressReporter.kt
-└── cancellation/           # Operation cancellation
-    └── CancellationManager.kt
+rust/
+├── src/
+│   ├── main.rs             # MCP server entry point (STDIO)
+│   ├── server/             # Tool, resource, and prompt handlers
+│   ├── service/            # CalendarService, event handles, event cache
+│   ├── caldav/             # CalDAV client, XML parsing, ETag normalization
+│   ├── ics/                # ICS parsing, building, patching (CRLF-safe)
+│   ├── ical/               # iCalendar model, parser, generator, recurrence, VTIMEZONE
+│   ├── validation.rs       # Input validation
+│   ├── error.rs            # Secure error handling
+│   ├── ratelimit.rs        # Rate limiting
+│   ├── credentials.rs      # Credential loading and masking
+│   ├── logging.rs          # MCP logging
+│   ├── progress.rs         # Progress reporting
+│   └── cancellation.rs     # Operation cancellation
+└── tests/                  # Integration, security, and live tests
+npm-package/                # npm wrapper (downloads the release binary)
 ```
 
 ### Testing with MCP Inspector
 
 ```bash
+cd rust
+cargo build --release
 ICLOUD_USERNAME="test@icloud.com" \
 ICLOUD_PASSWORD="test-app-password" \
-npx @mcp-use/inspector java -jar build/libs/icloud-calendar-mcp-*-all.jar
+npx @mcp-use/inspector ./target/release/icloud-calendar-mcp
 ```
 
 ---
@@ -579,7 +518,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ## Acknowledgments
 
 - [Model Context Protocol](https://modelcontextprotocol.io) by Anthropic
-- [MCP Kotlin SDK](https://github.com/modelcontextprotocol/kotlin-sdk) by Anthropic & JetBrains
-- [ical4j](https://www.ical4j.org/) for low-level ICS parsing (via the bundled icaldav-core library)
-- [OkHttp](https://square.github.io/okhttp/) for HTTP client
+- [rmcp](https://github.com/modelcontextprotocol/rust-sdk), the official Rust MCP SDK
+- [reqwest](https://github.com/seanmonstar/reqwest) for the HTTP client and [roxmltree](https://github.com/RazrFalcon/roxmltree) for XML parsing
+- [chrono-tz](https://github.com/chronotope/chrono-tz) for the IANA timezone database
 - [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) for security guidance

@@ -198,7 +198,7 @@ We take security vulnerabilities seriously. Please report them responsibly.
 
 ### How to Report
 
-1. **GitHub Security Advisory**: Use [GitHub's private vulnerability reporting](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/security/advisories/new)
+1. **GitHub Security Advisory**: Use [GitHub's private vulnerability reporting](https://github.com/geekdada/icloud-calendar-mcp/security/advisories/new)
 2. **Include**:
    - Description of the vulnerability
    - Steps to reproduce
@@ -227,65 +227,38 @@ We acknowledge security researchers who report valid vulnerabilities (with permi
 ### Running Security Tests
 
 ```bash
-# All security tests (239 tests)
-./gradlew test --tests "*SecurityTest*"
-./gradlew test --tests "AdversarialTest"
+cd rust
+
+# All security suites (158 tests)
+cargo test --test security_adversarial --test security_owasp_mcp \
+  --test ics_patcher_adversarial --test ics_redos_unicode \
+  --test ical_parser_adversarial --test ical_recurrence_adversarial \
+  --test ical_recurrence_resource_exhaustion
 
 # OWASP MCP specific tests
-./gradlew test --tests "OwaspMcpSecurityTest"
+cargo test --test security_owasp_mcp
 
-# Unicode security tests
-./gradlew test --tests "UnicodeSecurityTest"
-
-# ReDoS protection tests
-./gradlew test --tests "ReDoSSecurityTest"
-
-# Logger security tests
-./gradlew test --tests "McpLoggerSecurityTest"
-
-# Progress security tests
-./gradlew test --tests "ProgressSecurityTest"
-
-# Cancellation security tests
-./gradlew test --tests "CancellationSecurityTest"
+# Unit tests for logging, progress, cancellation, credentials and error sanitization
+cargo test --lib -- logging:: progress:: cancellation:: credentials:: error::
 
 # Input validation tests
-./gradlew test --tests "InputValidatorTest"
-
-# Error handler tests
-./gradlew test --tests "SecureErrorHandlerTest"
+cargo test --test input_validator_test
 ```
 
 ### Test Coverage
 
-| Category | Tests | Description |
-|----------|-------|-------------|
-| **Adversarial Inputs** | 53 | SQL/NoSQL injection, XSS, path traversal, command injection |
-| **Unicode Security** | 38 | Homoglyphs, normalization, RTL override, zero-width chars |
-| **Logger Security** | 31 | Log injection, CRLF, credential sanitization bypass |
-| **OWASP MCP Risks** | 29 | MCP01-10 specific attack vectors |
-| **Progress Security** | 27 | Token enumeration, injection, state manipulation |
-| **ReDoS Protection** | 25 | Catastrophic backtracking, resource exhaustion |
-| **Cancellation Security** | 22 | Replay attacks, race conditions, resource cleanup |
-| **Credential Security** | 14 | Token masking, secure storage, toString safety |
-| **Total Security Tests** | **239** | |
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| `security_adversarial` | 41 | Secrets in errors, SQL/XSS/command/prompt payloads as data, path traversal, oversized input |
+| `ics_patcher_adversarial` | 28 | CRLF injection, property injection, encoding attacks |
+| `security_owasp_mcp` | 25 | OWASP MCP Top 10 attack vectors |
+| `ical_recurrence_adversarial` | 24 | Hostile recurrence rules |
+| `ical_recurrence_resource_exhaustion` | 16 | Expansion caps and work bounds |
+| `ics_redos_unicode` | 13 | ReDoS patterns, Unicode round trips (bidi, zero-width, combining marks) |
+| `ical_parser_adversarial` | 11 | Malformed and hostile calendar data |
+| **Total Security Tests** | **158** | |
 
-### Adversarial Test Coverage
-
-| Attack Vector | Tests | Status |
-|--------------|-------|--------|
-| SQL/NoSQL Injection | 3 | Mitigated |
-| XSS Payloads | 3 | Mitigated |
-| Path Traversal | 3 | Mitigated |
-| Command Injection | 3 | Mitigated |
-| Prompt Injection | 3 | Mitigated |
-| ICS Format Injection | 3 | Mitigated |
-| CRLF Injection | 3 | Mitigated |
-| Null Byte Injection | 2 | Mitigated |
-| Oversized Inputs | 5 | Mitigated |
-| Unicode Edge Cases | 38 | Documented |
-| ReDoS Patterns | 25 | Mitigated |
-| Resource Exhaustion | 20 | Mitigated |
+Unit tests next to the code add 79 more: log injection and credential sanitization (`logging.rs`, 17), error sanitization (`error.rs`, 23), cancellation replay and cleanup (`cancellation.rs`, 15), progress token handling (`progress.rs`, 14) and credential masking (`credentials.rs`, 10).
 
 ## Security Updates
 
