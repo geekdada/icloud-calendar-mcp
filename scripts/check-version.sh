@@ -21,10 +21,6 @@ grep -A1 '^name = "icloud-calendar-mcp"$' rust/Cargo.lock | grep -q "^version = 
   || report "rust/Cargo.lock version != $version"
 grep -q "\"version\": \"$version\"" npm-package/package.json \
   || report "npm-package/package.json version != $version"
-grep -q "^version = \"$version\"" py-package/pyproject.toml \
-  || report "py-package/pyproject.toml version != $version"
-grep -q "^__version__ = \"$version\"" py-package/src/icloud_calendar_mcp/__init__.py \
-  || report "py-package __init__.py __version__ != $version"
 
 # server.json carries the version twice (top level + npm package entry).
 count="$(grep -c "\"version\": \"$version\"" server.json || true)"

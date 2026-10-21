@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 # The server itself is tested in rust.yml. This job covers what sits outside
-# rust/: version consistency and the npm/PyPI wrappers.
+# rust/: version consistency and the npm wrapper.
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,10 +27,3 @@ jobs:
       - name: Test npm wrapper
         working-directory: npm-package
         run: npm test
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Test Python wrapper
-        working-directory: py-package
-        run: uv run --frozen python -m unittest discover -s tests -v

@@ -91,7 +91,6 @@ This server is designed with security as a primary concern:
 ## Links
 
 - [GitHub Repository](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp)
-- [PyPI Package](https://pypi.org/project/icloud-calendar-mcp/)
 - [Security Policy](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/blob/main/SECURITY.md)
 - [MCP Documentation](https://modelcontextprotocol.io)
 

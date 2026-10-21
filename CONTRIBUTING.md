@@ -12,7 +12,7 @@ Be respectful and constructive in all interactions. We welcome contributors of a
 
 - [Rust](https://rustup.rs) 1.85 or newer (CI uses the latest stable)
 - Git
-- Node.js 18+ and [uv](https://docs.astral.sh/uv/), only to work on the npm or PyPI wrappers
+- Node.js 18+, only to work on the npm wrapper
 
 ### Development Setup
 

@@ -6,7 +6,6 @@
 
 [![Tests](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/rust.yml)
 [![npm](https://img.shields.io/npm/v/@icloud-calendar-mcp/server.svg)](https://www.npmjs.com/package/@icloud-calendar-mcp/server)
-[![PyPI](https://img.shields.io/pypi/v/icloud-calendar-mcp.svg)](https://pypi.org/project/icloud-calendar-mcp/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/?search=org.onekash)
 [![Security](https://img.shields.io/badge/Security-OWASP%20MCP%20Top%2010-blue.svg)](#security)
@@ -23,7 +22,7 @@ An MCP (Model Context Protocol) server that gives AI assistants access to iCloud
 - **Correct recurrence.** A series expands into one result per occurrence in the range, and you can edit or delete a single occurrence, this-and-future, or the whole series.
 - **Bounded responses.** Date-span and event-count caps return a clear, structured error instead of a silently truncated response.
 - **Security aligned with the OWASP MCP Top 10**, backed by a dedicated test suite.
-- **Published on the MCP Registry, npm, and PyPI.**
+- **Published on the MCP Registry and npm.**
 
 ## Features
 
@@ -70,11 +69,11 @@ User-initiated templates that guide Claude through a multi-step task:
 ### Prerequisites
 
 - iCloud account with [app-specific password](https://support.apple.com/en-us/HT204397)
-- No Java or other runtime for the server itself. `npx` needs Node.js 18+ and `uvx` needs [uv](https://docs.astral.sh/uv/); both run the same native binary. Prebuilt binaries cover Linux (x64, arm64), macOS (Intel, Apple silicon), and Windows (x64).
+- No Java or other runtime for the server itself. `npx` needs Node.js 18+ and runs the same native binary. Prebuilt binaries cover Linux (x64, arm64), macOS (Intel, Apple silicon), and Windows (x64).
 
 ### Installation
 
-Choose your preferred installation method. The npm and Python packages download the binary for your platform from the GitHub release on first use and verify its SHA-256 checksum.
+Choose your preferred installation method. The npm package downloads the binary for your platform from the GitHub release and verifies its SHA-256 checksum.
 
 #### Option 1: npm (Recommended)
 
@@ -82,13 +81,7 @@ Choose your preferred installation method. The npm and Python packages download 
 npx @icloud-calendar-mcp/server
 ```
 
-#### Option 2: Python (uvx)
-
-```bash
-uvx icloud-calendar-mcp
-```
-
-#### Option 3: Direct download
+#### Option 2: Direct download
 
 Download the binary for your platform from the [latest release](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/releases/latest). Each release also includes a `SHA256SUMS` file.
 
@@ -109,7 +102,7 @@ chmod +x icloud-calendar-mcp
 
 The binaries are not code-signed. On macOS, a binary downloaded with a browser is quarantined; clear it with `xattr -d com.apple.quarantine icloud-calendar-mcp`.
 
-#### Option 4: Build from source
+#### Option 3: Build from source
 
 Requires a [Rust toolchain](https://rustup.rs) (1.85 or newer):
 
@@ -152,25 +145,6 @@ Add to your Claude Desktop configuration:
     "icloud-calendar": {
       "command": "npx",
       "args": ["@icloud-calendar-mcp/server"],
-      "env": {
-        "ICLOUD_USERNAME": "your-apple-id@icloud.com",
-        "ICLOUD_PASSWORD": "your-app-specific-password"
-      }
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><strong>Using uvx (Python)</strong></summary>
-
-```json
-{
-  "mcpServers": {
-    "icloud-calendar": {
-      "command": "uvx",
-      "args": ["icloud-calendar-mcp"],
       "env": {
         "ICLOUD_USERNAME": "your-apple-id@icloud.com",
         "ICLOUD_PASSWORD": "your-app-specific-password"
@@ -511,7 +485,6 @@ rust/
 │   └── cancellation.rs     # Operation cancellation
 └── tests/                  # Integration, security, and live tests
 npm-package/                # npm wrapper (downloads the release binary)
-py-package/                 # PyPI wrapper (downloads the release binary)
 ```
 
 ### Testing with MCP Inspector

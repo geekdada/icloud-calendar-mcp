@@ -27,7 +27,7 @@ What actually happened.
 ## Environment
 
 - OS: [e.g., macOS 14.2, Ubuntu 22.04, Windows 11]
-- Install method: [e.g., npx, uvx, downloaded binary, built from source]
+- Install method: [e.g., npx, downloaded binary, built from source]
 - Apple Calendar MCP version: [e.g., 3.0.0]
 - Claude Desktop version: [e.g., 1.0.0]
 

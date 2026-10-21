@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Set the project version everywhere it is committed, from one argument.
 #
-# rust/Cargo.toml is the source of truth; the npm and PyPI wrappers must agree
-# with it, because each downloads the binaries from the release named after its
-# own version. The docs contain no version. They link the constant
+# rust/Cargo.toml is the source of truth; the npm wrapper must agree with it,
+# because it downloads the binaries from the release named after its own
+# version. The docs contain no version. They link the constant
 # releases/latest/download asset names.
 #
 # After running this, commit the result and tag v<version>. CI enforces the rest:
@@ -31,8 +31,6 @@ perl -0 -i -pe "s/(name = \"icloud-calendar-mcp\"\nversion = \")[^\"]*\"/\${1}$n
 echo "  updated rust/Cargo.lock"
 edit server.json                                      "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/g"
 edit npm-package/package.json                         "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/"
-edit py-package/pyproject.toml                        "s/^version = \".*\"/version = \"$new\"/"
-edit py-package/src/icloud_calendar_mcp/__init__.py   "s/^__version__ = \".*\"/__version__ = \"$new\"/"
 
 echo ""
 echo "Bumped to $new. Verifying..."

@@ -14,9 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Releases publish binaries for Linux (x64, arm64; static musl), macOS (Intel,
   Apple silicon) and Windows (x64), plus a `SHA256SUMS` file. The fat JAR is no
   longer published.
-- The npm and PyPI packages download the binary for the current platform and
-  verify it against the checksums bundled into the package. The npm CLI also
-  downloads it on first run when install scripts were skipped.
+- The npm package downloads the binary for the current platform and verifies it
+  against the checksums bundled into the package. Its CLI also downloads the
+  binary on first run when install scripts were skipped.
 - The server writes back properties it does not interpret (ORGANIZER, ATTENDEE,
   X-*, CLASS, GEO, COLOR, IMAGE, CONFERENCE and others) exactly as it read them,
   and puts all VEVENT properties before the VALARM blocks.
@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If a property's value cannot be read, the server treats the property as absent
   instead of dropping the whole event.
 - The rate limiter belongs to each server instance rather than the process.
+
+### Removed
+- The PyPI package (`uvx icloud-calendar-mcp`). Releases no longer publish to
+  PyPI; use `npx @icloud-calendar-mcp/server` or a release binary instead.
 
 ### Fixed
 - The server compares a UTC RRULE `UNTIL` as an instant, so zones east of UTC no

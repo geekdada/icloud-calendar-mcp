@@ -1,6 +1,6 @@
 # iCloud Calendar MCP server (Rust)
 
-The server's source. It speaks MCP over STDIO and builds to a single native binary. The npm and PyPI packages in the repository root download the release builds of this binary.
+The server's source. It speaks MCP over STDIO and builds to a single native binary. The npm package in `npm-package/` downloads the release builds of this binary.
 
 ## Build and run
 

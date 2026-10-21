@@ -31,7 +31,7 @@ function platformAsset() {
     throw new Error(
       `No prebuilt binary for ${process.platform}-${process.arch}. ` +
         `Supported: ${supportedPlatforms().join(', ')}. ` +
-        'Build from source instead: https://github.com/icloud-calendar-mcp/icloud-calendar-mcp#option-4-build-from-source',
+        'Build from source instead: https://github.com/icloud-calendar-mcp/icloud-calendar-mcp#option-3-build-from-source',
     );
   }
   return resolved;

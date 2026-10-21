@@ -34,15 +34,9 @@ test-caldav.sh
 test-manual.sh
 test-mcp-client.js
 
-# npm/Python package build artifacts (the release workflow writes SHA256SUMS)
+# npm package build artifacts (the release workflow writes SHA256SUMS)
 npm-package/lib/bin/
 npm-package/lib/SHA256SUMS
-py-package/src/icloud_calendar_mcp/SHA256SUMS
-py-package/dist/
-py-package/.venv/
-py-package/*.egg-info/
-__pycache__/
-*.pyc
 
 # MCP registry publisher tokens (secrets)
 .mcpregistry_*
