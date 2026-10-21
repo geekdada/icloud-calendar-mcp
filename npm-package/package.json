@@ -27,12 +27,13 @@
   },
   "files": [
     "bin/",
-    "lib/",
+    "lib/*.js",
+    "lib/SHA256SUMS",
     "README.md"
   ],
   "scripts": {
     "postinstall": "node lib/postinstall.js",
-    "test": "node bin/cli.js --version"
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18.0.0"

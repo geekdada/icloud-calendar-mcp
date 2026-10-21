@@ -2,50 +2,15 @@
 """
 iCloud Calendar MCP Server - Python wrapper
 
-This script wraps the Java JAR for easy uvx/pip usage.
-Requires Java 21+ to be installed.
+Launches the native server binary for this platform, downloading and
+verifying it on first run.
 """
 
 import os
 import subprocess
 import sys
-from pathlib import Path
 
-from icloud_calendar_mcp.downloader import ensure_jar
-
-JAR_NAME = "icloud-calendar-mcp-3.2.0-all.jar"
-MIN_JAVA_VERSION = 21
-
-
-def get_jar_path() -> Path:
-    """Get the path where the JAR should be stored."""
-    # Store in user's cache directory
-    cache_dir = Path.home() / ".cache" / "icloud-calendar-mcp"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / JAR_NAME
-
-
-def check_java() -> tuple[bool, str]:
-    """Check if Java 21+ is available."""
-    try:
-        result = subprocess.run(
-            ["java", "-version"],
-            capture_output=True,
-            text=True,
-        )
-        output = result.stderr + result.stdout
-
-        # Parse version from output like 'openjdk version "17.0.1"' or 'java version "21"'
-        import re
-        match = re.search(r'version "(\d+)', output)
-        if match:
-            version = int(match.group(1))
-            if version >= MIN_JAVA_VERSION:
-                return True, f"Java {version}"
-            return False, f"Java {MIN_JAVA_VERSION}+ required, found Java {version}"
-        return False, "Could not parse Java version"
-    except FileNotFoundError:
-        return False, "Java not found. Please install Java 21 or higher."
+from icloud_calendar_mcp.downloader import RELEASE_URL, InstallError, ensure_binary
 
 
 def check_credentials() -> tuple[bool, str]:
@@ -115,33 +80,25 @@ def main():
         print(f"icloud-calendar-mcp v{__version__}")
         sys.exit(0)
 
-    # Preflight checks
-    java_ok, java_msg = check_java()
-    if not java_ok:
-        print(f"\033[31mError:\033[0m {java_msg}", file=sys.stderr)
-        sys.exit(1)
-
     cred_ok, cred_msg = check_credentials()
     if not cred_ok:
         print(f"\033[31mError:\033[0m {cred_msg}", file=sys.stderr)
         sys.exit(1)
 
-    # Ensure JAR is downloaded
-    jar_path = get_jar_path()
-    if not ensure_jar(jar_path):
+    try:
+        binary = ensure_binary()
+    except (InstallError, OSError) as error:
+        print(f"\033[31mError:\033[0m {error}", file=sys.stderr)
+        print(f"Release assets: {RELEASE_URL}", file=sys.stderr)
         sys.exit(1)
 
-    # Run the JAR
     try:
-        process = subprocess.run(
-            ["java", "-jar", str(jar_path)],
-            env=os.environ,
-        )
+        process = subprocess.run([str(binary)], env=os.environ)
         sys.exit(process.returncode)
     except KeyboardInterrupt:
         sys.exit(0)
     except Exception as e:
-        print(f"\033[31mFailed to start Java:\033[0m {e}", file=sys.stderr)
+        print(f"\033[31mFailed to start the server:\033[0m {e}", file=sys.stderr)
         sys.exit(1)
 
 

@@ -22,7 +22,7 @@ Closes #(issue number)
 
 ## Testing
 
-- [ ] All existing tests pass (`./gradlew test`)
+- [ ] All existing tests pass (`cargo test` in `rust/`)
 - [ ] New tests added for changes
 - [ ] Manual testing performed
 

@@ -35,3 +35,7 @@ icloud-calendar-mcp = "icloud_calendar_mcp.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/icloud_calendar_mcp"]
+
+# SHA256SUMS is gitignored; the release workflow writes it before `uv build`.
+[tool.hatch.build]
+artifacts = ["src/icloud_calendar_mcp/SHA256SUMS"]

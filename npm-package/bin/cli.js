@@ -3,18 +3,14 @@
 /**
  * iCloud Calendar MCP Server - npm wrapper
  *
- * This script wraps the Java JAR for easy npm/npx usage.
- * Requires Java 21+ to be installed.
+ * Launches the native server binary that postinstall downloaded for this
+ * platform, downloading it first if postinstall was skipped.
  */
 
-const { spawn, execSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+const { spawn } = require('child_process');
 
 const pkg = require('../package.json');
-const JAR_NAME = `icloud-calendar-mcp-${pkg.version}-all.jar`;
-const JAR_PATH = path.join(__dirname, '..', 'lib', JAR_NAME);
-const MIN_JAVA_VERSION = 21;
+const { ensureBinary, RELEASE_URL } = require('../lib/install');
 
 // ANSI colors
 const RED = '\x1b[31m';
@@ -24,23 +20,6 @@ const RESET = '\x1b[0m';
 
 function log(msg) {
   console.error(msg);
-}
-
-function checkJava() {
-  try {
-    const output = execSync('java -version 2>&1', { encoding: 'utf8' });
-    const match = output.match(/version "(\d+)/);
-    if (match) {
-      const version = parseInt(match[1], 10);
-      if (version >= MIN_JAVA_VERSION) {
-        return { ok: true, version };
-      }
-      return { ok: false, version, error: `Java ${MIN_JAVA_VERSION}+ required, found ${version}` };
-    }
-    return { ok: false, error: 'Could not parse Java version' };
-  } catch (e) {
-    return { ok: false, error: 'Java not found. Please install Java 21 or higher.' };
-  }
 }
 
 function checkCredentials() {
@@ -55,17 +34,6 @@ function checkCredentials() {
   export ICLOUD_PASSWORD="your-app-specific-password"
 
 Get an app-specific password at: https://appleid.apple.com`
-    };
-  }
-  return { ok: true };
-}
-
-function checkJar() {
-  if (!fs.existsSync(JAR_PATH)) {
-    return {
-      ok: false,
-      error: `JAR not found at ${JAR_PATH}
-Try reinstalling: npm install @icloud-calendar-mcp/server`
     };
   }
   return { ok: true };
@@ -108,7 +76,27 @@ ${YELLOW}More Info:${RESET}
 `);
 }
 
-function main() {
+function run(binary) {
+  const server = spawn(binary, [], {
+    stdio: 'inherit',
+    env: process.env
+  });
+
+  server.on('error', (err) => {
+    log(`${RED}Failed to start the server:${RESET} ${err.message}`);
+    process.exit(1);
+  });
+
+  server.on('exit', (code) => {
+    process.exit(code || 0);
+  });
+
+  // Forward signals
+  process.on('SIGINT', () => server.kill('SIGINT'));
+  process.on('SIGTERM', () => server.kill('SIGTERM'));
+}
+
+async function main() {
   const args = process.argv.slice(2);
 
   // Handle --help and --version
@@ -122,43 +110,22 @@ function main() {
     process.exit(0);
   }
 
-  // Preflight checks
-  const javaCheck = checkJava();
-  if (!javaCheck.ok) {
-    log(`${RED}Error:${RESET} ${javaCheck.error}`);
-    process.exit(1);
-  }
-
-  const jarCheck = checkJar();
-  if (!jarCheck.ok) {
-    log(`${RED}Error:${RESET} ${jarCheck.error}`);
-    process.exit(1);
-  }
-
   const credCheck = checkCredentials();
   if (!credCheck.ok) {
     log(`${RED}Error:${RESET} ${credCheck.error}`);
     process.exit(1);
   }
 
-  // Run the JAR
-  const java = spawn('java', ['-jar', JAR_PATH], {
-    stdio: 'inherit',
-    env: process.env
-  });
-
-  java.on('error', (err) => {
-    log(`${RED}Failed to start Java:${RESET} ${err.message}`);
+  let binary;
+  try {
+    binary = await ensureBinary();
+  } catch (err) {
+    log(`${RED}Error:${RESET} ${err.message}`);
+    log(`Release assets: ${RELEASE_URL}`);
     process.exit(1);
-  });
+  }
 
-  java.on('exit', (code) => {
-    process.exit(code || 0);
-  });
-
-  // Forward signals
-  process.on('SIGINT', () => java.kill('SIGINT'));
-  process.on('SIGTERM', () => java.kill('SIGTERM'));
+  run(binary);
 }
 
 main();

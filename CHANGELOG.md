@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- The server is now a native Rust binary, so Java is no longer required. This
+  release removes the Kotlin/JVM implementation, the Gradle build and the
+  vendored icaldav-core library.
+- Releases publish binaries for Linux (x64, arm64; static musl), macOS (Intel,
+  Apple silicon) and Windows (x64), plus a `SHA256SUMS` file. The fat JAR is no
+  longer published.
+- The npm and PyPI packages download the binary for the current platform and
+  verify it against the checksums bundled into the package. The npm CLI also
+  downloads it on first run when install scripts were skipped.
+- The server writes back properties it does not interpret (ORGANIZER, ATTENDEE,
+  X-*, CLASS, GEO, COLOR, IMAGE, CONFERENCE and others) exactly as it read them,
+  and puts all VEVENT properties before the VALARM blocks.
+- DTSTART is always the first occurrence of a series and counts toward COUNT, as
+  RFC 5545 §3.3.10 requires. A rule such as `FREQ=WEEKLY;BYDAY=MO` starting on a
+  Tuesday now returns that Tuesday too.
+- An EXDATE removes the occurrence at its exact time. It removes a whole day only
+  for series with at most one occurrence per day.
+- VTIMEZONE blocks use the local wall-clock time of each transition and the real
+  zone abbreviation (`JST`, not `TOKY`).
+- If a property's value cannot be read, the server treats the property as absent
+  instead of dropping the whole event.
+- The rate limiter belongs to each server instance rather than the process.
+
+### Fixed
+- The server compares a UTC RRULE `UNTIL` as an instant, so zones east of UTC no
+  longer lose the last occurrence.
+- An update that still hits a stale ETag after its one retry returns `CONFLICT`
+  instead of `INTERNAL_ERROR`.
+- A JSON `null` argument counts as absent, and an object or array where a string
+  belongs returns `VALIDATION_ERROR` instead of `INTERNAL_ERROR`.
+- `update_event` validates `start_date` and `end_date`.
+- Datetimes without seconds (`2026-01-15T09:00`) work with a `timezone`.
+
+### Planned
+- Calendar sharing
+- Attendee management
+
 ## [3.2.0] - 2026-08-14
 
 ### Added
@@ -192,8 +232,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Input validation prevents injection attacks
 - Rate limiting prevents abuse
 
-## [Unreleased]
-
-### Planned
-- Calendar sharing
-- Attendee management

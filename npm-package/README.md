@@ -22,7 +22,7 @@ icloud-calendar-mcp
 
 ## Requirements
 
-- **Java 21+** (the server runs as a Java JAR)
+- Node.js 18+, on Linux (x64, arm64), macOS (Intel, Apple silicon) or Windows (x64). The package downloads the native server binary for your platform from the GitHub release and verifies its SHA-256 checksum; no Java is needed.
 - iCloud account with [app-specific password](https://support.apple.com/en-us/HT204397)
 
 ## Setup

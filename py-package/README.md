@@ -20,7 +20,7 @@ icloud-calendar-mcp
 
 ## Requirements
 
-- **Java 21+** must be installed
+- Python 3.10+, on Linux (x64, arm64), macOS (Intel, Apple silicon) or Windows (x64). On first run the package downloads the native server binary for your platform from the GitHub release, verifies its SHA-256 checksum and caches it in `~/.cache/icloud-calendar-mcp/`; no Java is needed.
 - **iCloud credentials** (Apple ID + App-Specific Password)
 
 ## Setup
