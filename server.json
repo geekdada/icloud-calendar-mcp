@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.geekdada/icloud-calendar-mcp",
+  "name": "dev.royli/icloud-calendar-mcp",
   "description": "MCP server for iCloud (Apple) Calendar access via CalDAV",
   "repository": {
     "url": "https://github.com/geekdada/icloud-calendar-mcp",
