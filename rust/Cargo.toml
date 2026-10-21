@@ -1,0 +1,42 @@
+[package]
+name = "icloud-calendar-mcp"
+version = "3.2.0"
+edition = "2024"
+rust-version = "1.85"
+description = "MCP server for iCloud (Apple) Calendar access via CalDAV"
+license = "Apache-2.0"
+repository = "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp"
+readme = "README.md"
+
+[[bin]]
+name = "icloud-calendar-mcp"
+path = "src/main.rs"
+
+[dependencies]
+async-trait = "0.1.92"
+base64 = "0.23.1"
+chrono = "0.4.45"
+chrono-tz = "0.10.4"
+fastrand = "2.5.0"
+futures = "0.3.34"
+iana-time-zone = "0.1.65"
+regex = "1.13.1"
+reqwest = "0.13.5"
+rmcp = { version = "3.6.0", features = ["server", "transport-io"] }
+roxmltree = "0.21.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+tokio = { version = "1.54.0", features = ["full"] }
+uuid = { version = "1.28.0", features = ["v4"] }
+
+[dev-dependencies]
+wiremock = "0.6.5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+# ~60 integration-test binaries; full debug info makes the target dir many GB.
+debug = "line-tables-only"

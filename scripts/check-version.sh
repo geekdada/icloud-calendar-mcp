@@ -29,6 +29,12 @@ grep -q "^VERSION = \"$version\"" py-package/src/icloud_calendar_mcp/downloader.
 grep -q "^JAR_NAME = \"icloud-calendar-mcp-$version-all.jar\"" py-package/src/icloud_calendar_mcp/cli.py \
   || report "py-package cli.py JAR_NAME != $version"
 
+# The Rust port shares the version (rust/Cargo.toml [package] version).
+grep -q "^version = \"$version\"" rust/Cargo.toml \
+  || report "rust/Cargo.toml version != $version"
+grep -A1 '^name = "icloud-calendar-mcp"$' rust/Cargo.lock | grep -q "^version = \"$version\"" \
+  || report "rust/Cargo.lock version != $version"
+
 # server.json carries the version twice (top level + npm package entry).
 count="$(grep -c "\"version\": \"$version\"" server.json || true)"
 [ "$count" -eq 2 ] || report "server.json has $count of 2 expected \"version\": \"$version\" entries"

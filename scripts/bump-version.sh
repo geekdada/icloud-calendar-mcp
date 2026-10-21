@@ -28,6 +28,9 @@ edit() {  # edit <file> <perl-expression>
 }
 
 edit build.gradle.kts                                 "s/^version = \".*\"/version = \"$new\"/"
+edit rust/Cargo.toml                                  "s/^version = \".*\"/version = \"$new\"/ if \$. <= 5"
+perl -0 -i -pe "s/(name = \"icloud-calendar-mcp\"\nversion = \")[^\"]*\"/\${1}$new\"/" rust/Cargo.lock
+echo "  updated rust/Cargo.lock"
 edit server.json                                      "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/g"
 edit npm-package/package.json                         "s/\"version\": \"[^\"]*\"/\"version\": \"$new\"/"
 edit py-package/pyproject.toml                        "s/^version = \".*\"/version = \"$new\"/"
