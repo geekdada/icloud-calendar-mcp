@@ -46,7 +46,7 @@ ${GREEN}iCloud Calendar MCP Server${RESET}
 A security-first MCP server for iCloud Calendar access.
 
 ${YELLOW}Usage:${RESET}
-  npx @icloud-calendar-mcp/server
+  npx @royli/icloud-calendar-mcp
 
 ${YELLOW}Environment Variables (required):${RESET}
   ICLOUD_USERNAME    Your Apple ID email
@@ -59,7 +59,7 @@ ${YELLOW}Claude Desktop Configuration:${RESET}
     "mcpServers": {
       "icloud-calendar": {
         "command": "npx",
-        "args": ["@icloud-calendar-mcp/server"],
+        "args": ["@royli/icloud-calendar-mcp"],
         "env": {
           "ICLOUD_USERNAME": "your-apple-id@icloud.com",
           "ICLOUD_PASSWORD": "your-app-specific-password"
@@ -72,7 +72,7 @@ ${YELLOW}Get App-Specific Password:${RESET}
   https://appleid.apple.com → Security → App-Specific Passwords
 
 ${YELLOW}More Info:${RESET}
-  https://github.com/icloud-calendar-mcp/icloud-calendar-mcp
+  https://github.com/geekdada/icloud-calendar-mcp
 `);
 }
 

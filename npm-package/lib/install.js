@@ -16,7 +16,7 @@ const path = require('path');
 const { resolveAsset, supportedPlatforms, parseChecksums } = require('./platform');
 
 const pkg = require('../package.json');
-const RELEASE_URL = `https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/releases/download/v${pkg.version}`;
+const RELEASE_URL = `https://github.com/geekdada/icloud-calendar-mcp/releases/download/v${pkg.version}`;
 const CHECKSUMS_PATH = path.join(__dirname, 'SHA256SUMS');
 const BIN_DIR = path.join(__dirname, 'bin');
 const MAX_REDIRECTS = 5;
@@ -31,7 +31,7 @@ function platformAsset() {
     throw new Error(
       `No prebuilt binary for ${process.platform}-${process.arch}. ` +
         `Supported: ${supportedPlatforms().join(', ')}. ` +
-        'Build from source instead: https://github.com/icloud-calendar-mcp/icloud-calendar-mcp#option-3-build-from-source',
+        'Build from source instead: https://github.com/geekdada/icloud-calendar-mcp#option-3-build-from-source',
     );
   }
   return resolved;

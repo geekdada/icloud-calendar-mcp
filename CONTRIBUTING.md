@@ -18,7 +18,7 @@ Be respectful and constructive in all interactions. We welcome contributors of a
 
 1. Fork and clone the repository:
    ```bash
-   git clone https://github.com/icloud-calendar-mcp/icloud-calendar-mcp.git
+   git clone https://github.com/geekdada/icloud-calendar-mcp.git
    cd icloud-calendar-mcp
    ```
 

@@ -8,7 +8,7 @@ const { ensureBinary, RELEASE_URL } = require('./install');
 
 ensureBinary()
   .then(() => {
-    console.error('iCloud Calendar MCP server installed. Usage: npx @icloud-calendar-mcp/server --help');
+    console.error('iCloud Calendar MCP server installed. Usage: npx @royli/icloud-calendar-mcp --help');
   })
   .catch((err) => {
     console.error(`Error installing the iCloud Calendar MCP server: ${err.message}`);

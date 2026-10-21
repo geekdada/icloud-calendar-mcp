@@ -198,7 +198,7 @@ We take security vulnerabilities seriously. Please report them responsibly.
 
 ### How to Report
 
-1. **GitHub Security Advisory**: Use [GitHub's private vulnerability reporting](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/security/advisories/new)
+1. **GitHub Security Advisory**: Use [GitHub's private vulnerability reporting](https://github.com/geekdada/icloud-calendar-mcp/security/advisories/new)
 2. **Include**:
    - Description of the vulnerability
    - Steps to reproduce

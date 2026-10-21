@@ -194,7 +194,7 @@ jobs:
       id-token: write  # npm trusted publishing and provenance
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@icloud-calendar-mcp/server
+      url: https://www.npmjs.com/package/@royli/icloud-calendar-mcp
 
     steps:
       - name: Checkout

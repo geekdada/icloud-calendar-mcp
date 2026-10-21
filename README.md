@@ -4,10 +4,10 @@
 
 <h1 align="center">iCloud Calendar MCP Server</h1>
 
-[![Tests](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/actions/workflows/rust.yml)
-[![npm](https://img.shields.io/npm/v/@icloud-calendar-mcp/server.svg)](https://www.npmjs.com/package/@icloud-calendar-mcp/server)
+[![Tests](https://github.com/geekdada/icloud-calendar-mcp/actions/workflows/rust.yml/badge.svg)](https://github.com/geekdada/icloud-calendar-mcp/actions/workflows/rust.yml)
+[![npm](https://img.shields.io/npm/v/@royli/icloud-calendar-mcp.svg)](https://www.npmjs.com/package/@royli/icloud-calendar-mcp)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/?search=org.onekash)
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/?search=io.github.geekdada)
 [![Security](https://img.shields.io/badge/Security-OWASP%20MCP%20Top%2010-blue.svg)](#security)
 
 An MCP (Model Context Protocol) server that gives AI assistants access to iCloud Calendar via CalDAV, with security controls aligned with the [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/).
@@ -78,12 +78,12 @@ Choose your preferred installation method. The npm package downloads the binary 
 #### Option 1: npm (Recommended)
 
 ```bash
-npx @icloud-calendar-mcp/server
+npx @royli/icloud-calendar-mcp
 ```
 
 #### Option 2: Direct download
 
-Download the binary for your platform from the [latest release](https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/releases/latest). Each release also includes a `SHA256SUMS` file.
+Download the binary for your platform from the [latest release](https://github.com/geekdada/icloud-calendar-mcp/releases/latest). Each release also includes a `SHA256SUMS` file.
 
 | Platform | Asset |
 |----------|-------|
@@ -95,7 +95,7 @@ Download the binary for your platform from the [latest release](https://github.c
 
 ```bash
 # Example: macOS on Apple silicon
-curl -Lo icloud-calendar-mcp https://github.com/icloud-calendar-mcp/icloud-calendar-mcp/releases/latest/download/icloud-calendar-mcp-aarch64-apple-darwin
+curl -Lo icloud-calendar-mcp https://github.com/geekdada/icloud-calendar-mcp/releases/latest/download/icloud-calendar-mcp-aarch64-apple-darwin
 chmod +x icloud-calendar-mcp
 ./icloud-calendar-mcp
 ```
@@ -107,7 +107,7 @@ The binaries are not code-signed. On macOS, a binary downloaded with a browser i
 Requires a [Rust toolchain](https://rustup.rs) (1.85 or newer):
 
 ```bash
-git clone https://github.com/icloud-calendar-mcp/icloud-calendar-mcp.git
+git clone https://github.com/geekdada/icloud-calendar-mcp.git
 cd icloud-calendar-mcp/rust
 cargo build --release
 ./target/release/icloud-calendar-mcp
@@ -144,7 +144,7 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "icloud-calendar": {
       "command": "npx",
-      "args": ["@icloud-calendar-mcp/server"],
+      "args": ["@royli/icloud-calendar-mcp"],
       "env": {
         "ICLOUD_USERNAME": "your-apple-id@icloud.com",
         "ICLOUD_PASSWORD": "your-app-specific-password"

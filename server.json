@@ -1,16 +1,16 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "org.onekash/icloud-calendar-mcp",
+  "name": "io.github.geekdada/icloud-calendar-mcp",
   "description": "MCP server for iCloud (Apple) Calendar access via CalDAV",
   "repository": {
-    "url": "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp",
+    "url": "https://github.com/geekdada/icloud-calendar-mcp",
     "source": "github"
   },
   "version": "3.2.0",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@icloud-calendar-mcp/server",
+      "identifier": "@royli/icloud-calendar-mcp",
       "version": "3.2.0",
       "transport": {
         "type": "stdio"

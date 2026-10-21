@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.85"
 description = "MCP server for iCloud (Apple) Calendar access via CalDAV"
 license = "Apache-2.0"
-repository = "https://github.com/icloud-calendar-mcp/icloud-calendar-mcp"
+repository = "https://github.com/geekdada/icloud-calendar-mcp"
 readme = "README.md"
 
 [[bin]]

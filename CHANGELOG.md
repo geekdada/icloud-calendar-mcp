@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - The PyPI package (`uvx icloud-calendar-mcp`). Releases no longer publish to
-  PyPI; use `npx @icloud-calendar-mcp/server` or a release binary instead.
+  PyPI; use `npx @royli/icloud-calendar-mcp` or a release binary instead.
 
 ### Fixed
 - The server compares a UTC RRULE `UNTIL` as an instant, so zones east of UTC no
