@@ -197,6 +197,27 @@ cargo build --release
 # Output: target/release/icloud-calendar-mcp
 ```
 
+### Releasing
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`. It builds the five binaries, creates the GitHub release with `SHA256SUMS`, and publishes `@royli/icloud-calendar-mcp` to npm with provenance.
+
+One-time setup:
+
+1. On npmjs.com, create a granular access token with **Read and write** on the `@royli` scope and **Bypass 2FA** enabled, so CI can publish without an OTP. npm caps write tokens at 90 days, so renew it before it expires.
+2. In the GitHub repository, add it as the secret `NPM_TOKEN`, either under **Settings → Environments → npm** or as a repository secret.
+
+Each release:
+
+```bash
+scripts/bump-version.sh 3.3.0        # rust/Cargo.toml, Cargo.lock, server.json, npm-package/package.json
+git commit -am "Release 3.3.0"
+git push origin main
+git tag v3.3.0
+git push origin v3.3.0
+```
+
+The workflow fails before building if the tag does not match `rust/Cargo.toml`. A version with a hyphen (`3.3.0-rc.1`) is marked as a prerelease on GitHub and published under the npm `next` tag, so `npx @royli/icloud-calendar-mcp` keeps resolving to the last stable version.
+
 ### Testing with MCP Inspector
 
 ```bash
