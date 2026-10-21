@@ -199,11 +199,11 @@ cargo build --release
 
 ### Releasing
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`. It builds the five binaries, creates the GitHub release with `SHA256SUMS`, and publishes `@royli/icloud-calendar-mcp` to npm with provenance.
+Pushing a `v*` tag runs `.github/workflows/release.yml`. It builds the five binaries, creates the GitHub release with `SHA256SUMS`, and stages `@royli/icloud-calendar-mcp` on npm with provenance. A staged version is invisible to installers until a maintainer approves it.
 
 One-time setup:
 
-1. On npmjs.com, create a granular access token with **Read and write** on the `@royli` scope and **Bypass 2FA** enabled, so CI can publish without an OTP. npm caps write tokens at 90 days, so renew it before it expires.
+1. On npmjs.com, create a granular access token with **Read and write (stage only)** on the `@royli` scope. CI can stage with it but cannot publish. npm caps write tokens at 90 days, so renew it before it expires.
 2. In the GitHub repository, add it as the secret `NPM_TOKEN`, either under **Settings → Environments → npm** or as a repository secret.
 
 Each release:
@@ -214,7 +214,13 @@ git commit -am "Release 3.3.0"
 git push origin main
 git tag v3.3.0
 git push origin v3.3.0
+
+# after the workflow finishes, from an account with 2FA
+npm stage list @royli/icloud-calendar-mcp
+npm stage approve <stage-id>
 ```
+
+You can also approve from the stage queue on npmjs.com. The workflow's run summary repeats these commands. Staging a version that is already staged fails, so reject the old one (`npm stage reject <stage-id>`) before re-running the job. For the first release npm creates the package with a public `0.0.0-stage` placeholder until you approve.
 
 The workflow fails before building if the tag does not match `rust/Cargo.toml`. A version with a hyphen (`3.3.0-rc.1`) is marked as a prerelease on GitHub and published under the npm `next` tag, so `npx @royli/icloud-calendar-mcp` keeps resolving to the last stable version.
 

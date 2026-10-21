@@ -232,11 +232,13 @@ jobs:
           npm pack --dry-run --ignore-scripts 2>&1 | tee pack.log
           grep -q 'lib/SHA256SUMS' pack.log
 
-      - name: Publish to npm
-        # NPM_TOKEN is a granular access token with read/write on the @royli
-        # scope. setup-node's .npmrc reads it from
-        # NODE_AUTH_TOKEN. Provenance is signed with the job's OIDC token.
-        # npm refuses a prerelease without --tag, and it must not become latest.
+      - name: Stage on npm
+        # NPM_TOKEN is a granular access token with "Read and write (stage only)"
+        # on the @royli scope, so CI can stage a version but never publish one.
+        # The version stays hidden until a maintainer approves it with 2FA.
+        # Staging needs npm 11.15+, which Node 24 bundles. Provenance is signed
+        # with the job's OIDC token. A prerelease goes to the next dist-tag so
+        # it never becomes latest.
         working-directory: npm-package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -250,4 +252,9 @@ jobs:
             *-*) dist_tag=next ;;
             *) dist_tag=latest ;;
           esac
-          npm publish --access public --provenance --tag "$dist_tag"
+          npm stage publish --access public --provenance --tag "$dist_tag"
+          {
+            echo "### @royli/icloud-calendar-mcp@$VERSION is staged"
+            echo ""
+            echo "Approve it to publish under the \`$dist_tag\` tag: run \`npm stage list @royli/icloud-calendar-mcp\`, then \`npm stage approve <stage-id>\`, or use the stage queue on npmjs.com."
+          } >> "$GITHUB_STEP_SUMMARY"
