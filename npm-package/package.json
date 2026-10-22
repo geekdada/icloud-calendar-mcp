@@ -1,6 +1,6 @@
 {
   "name": "@royli/icloud-calendar-mcp",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "mcpName": "dev.royli/icloud-calendar-mcp",
   "description": "MCP server for iCloud Calendar access via CalDAV",
   "keywords": [

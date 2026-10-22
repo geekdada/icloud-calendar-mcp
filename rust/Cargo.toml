@@ -1,6 +1,6 @@
 [package]
 name = "icloud-calendar-mcp"
-version = "3.3.0"
+version = "3.3.1"
 edition = "2024"
 rust-version = "1.85"
 description = "MCP server for iCloud (Apple) Calendar access via CalDAV"

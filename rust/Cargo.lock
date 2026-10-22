@@ -649,7 +649,7 @@ dependencies = [
 
 [[package]]
 name = "icloud-calendar-mcp"
-version = "3.3.0"
+version = "3.3.1"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
