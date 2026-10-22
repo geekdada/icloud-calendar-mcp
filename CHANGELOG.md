@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Calendar sharing
+- Attendee management
+
+## [3.3.1] - 2026-10-22
+
+### Changed
+- To-dos (VTODO) are hidden from MCP clients. `list_calendars` and the
+  `calendar://calendars` resource leave out to-do lists and drop `VTODO` from
+  `supportedComponents`. `create_event` returns `NOT_FOUND` for a to-do list.
+
+## [3.3.0] - 2026-10-21
+
 ### Changed
 - The server is now a native Rust binary, so Java is no longer required. This
   release removes the Kotlin/JVM implementation, the Gradle build and the
@@ -30,9 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If a property's value cannot be read, the server treats the property as absent
   instead of dropping the whole event.
 - The rate limiter belongs to each server instance rather than the process.
-- To-dos (VTODO) are hidden from MCP clients. `list_calendars` and the
-  `calendar://calendars` resource leave out to-do lists and drop `VTODO` from
-  `supportedComponents`. `create_event` returns `NOT_FOUND` for a to-do list.
 
 ### Removed
 - The PyPI package (`uvx icloud-calendar-mcp`). Releases no longer publish to
@@ -47,10 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   belongs returns `VALIDATION_ERROR` instead of `INTERNAL_ERROR`.
 - `update_event` validates `start_date` and `end_date`.
 - Datetimes without seconds (`2026-01-15T09:00`) work with a `timezone`.
-
-### Planned
-- Calendar sharing
-- Attendee management
 
 ## [3.2.0] - 2026-08-14
 
