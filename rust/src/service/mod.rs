@@ -219,18 +219,22 @@ impl CalendarService {
         Ok(())
     }
 
-    /// Every calendar the account can see. Validates the connection on first use.
+    /// Every event calendar the account can see. Validates the connection on first use.
+    ///
+    /// To-dos are not exposed: to-do lists are left out and VTODO is dropped
+    /// from `supported_components`.
     pub async fn list_calendars(&self) -> ServiceResult<Vec<CalendarInfo>> {
         self.ensure_connected().await?;
         let calendars = self.client.list_calendars().await?;
         Ok(calendars
             .into_iter()
+            .filter(|c| !c.is_todo_list())
             .map(|c| CalendarInfo {
                 id: c.id,
                 name: c.display_name,
                 color: c.color,
                 read_only: c.is_read_only,
-                supported_components: c.supported_components,
+                supported_components: c.supported_components.into_iter().filter(|name| name != "VTODO").collect(),
             })
             .collect())
     }
@@ -281,7 +285,7 @@ impl CalendarService {
         let calendars = self.client.list_calendars().await?;
         let calendar = calendars
             .iter()
-            .find(|c| c.id == calendar_id)
+            .find(|c| c.id == calendar_id && !c.is_todo_list())
             .ok_or_else(|| ServiceError::new(404, format!("Calendar not found: {calendar_id}")))?;
         if calendar.is_read_only {
             return Err(ServiceError::new(403, format!("Calendar is read-only: {}", calendar.display_name)));

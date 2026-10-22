@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - If a property's value cannot be read, the server treats the property as absent
   instead of dropping the whole event.
 - The rate limiter belongs to each server instance rather than the process.
+- To-dos (VTODO) are hidden from MCP clients. `list_calendars` and the
+  `calendar://calendars` resource leave out to-do lists and drop `VTODO` from
+  `supportedComponents`. `create_event` returns `NOT_FOUND` for a to-do list.
 
 ### Removed
 - The PyPI package (`uvx icloud-calendar-mcp`). Releases no longer publish to

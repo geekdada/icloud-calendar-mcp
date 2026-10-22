@@ -188,7 +188,7 @@ Once configured, you can ask Claude:
 ### Tool Parameters
 
 #### list_calendars
-No parameters required.
+No parameters required. To-do lists (calendars that only hold VTODO) are not listed, and the server never returns to-dos.
 
 #### get_events
 | Parameter | Type | Required | Description |
