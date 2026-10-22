@@ -152,6 +152,14 @@ pub struct CalDavCalendar {
     pub supported_components: Vec<String>,
 }
 
+impl CalDavCalendar {
+    /// True for a to-do list: every supported component is VTODO. An empty set
+    /// means the server did not restrict the collection, so it may hold events.
+    pub fn is_todo_list(&self) -> bool {
+        !self.supported_components.is_empty() && self.supported_components.iter().all(|c| c == "VTODO")
+    }
+}
+
 /// A CalDAV event resource.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalDavEvent {

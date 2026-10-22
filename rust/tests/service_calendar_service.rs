@@ -22,6 +22,10 @@ fn cal(id: &str) -> CalDavCalendar {
     calendar(id, "Cal")
 }
 
+fn with_components(id: &str, names: &[&str]) -> CalDavCalendar {
+    CalDavCalendar { supported_components: names.iter().map(|n| n.to_string()).collect(), ..cal(id) }
+}
+
 fn resource(uid: &str, href: &str, etag: &str, ics: &str) -> CalDavEvent {
     CalDavEvent {
         uid: uid.into(),
@@ -80,6 +84,21 @@ async fn list_calendars_returns_parsed_calendars() {
     assert!(!calendars[0].read_only);
     assert!(calendars[1].read_only);
     assert_eq!(calendars[0].supported_components, ["VEVENT"]);
+}
+
+#[tokio::test]
+async fn list_calendars_hides_todo_lists_and_the_vtodo_component() {
+    let (mock, service) = setup();
+    mock.state().calendars = vec![
+        with_components("events", &["VEVENT"]),
+        with_components("reminders", &["VTODO"]),
+        with_components("mixed", &["VEVENT", "VTODO"]),
+        with_components("unrestricted", &[]),
+    ];
+    let calendars = service.list_calendars().await.unwrap();
+    let ids: Vec<&str> = calendars.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(ids, ["events", "mixed", "unrestricted"]);
+    assert_eq!(calendars[1].supported_components, ["VEVENT"]);
 }
 
 #[tokio::test]
@@ -172,6 +191,32 @@ async fn get_events_filters_out_unparseable_events() {
     let events = service.get_events("cal-1", "2025-01-15", "2025-01-15").await.unwrap();
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].uid, "good-001");
+}
+
+#[tokio::test]
+async fn get_events_never_returns_todos() {
+    let (mock, service) = setup();
+    {
+        let mut s = mock.state();
+        s.calendars = vec![cal("cal-1")];
+        s.events_response = vec![
+            resource(
+                "todo-001",
+                "/cal/todo.ics",
+                "\"etag1\"",
+                "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VTODO\nUID:todo-001\nSUMMARY:Buy milk\nDTSTART:20250115T100000Z\nDUE:20250115T110000Z\nEND:VTODO\nEND:VCALENDAR",
+            ),
+            resource(
+                "event-001",
+                "/cal/event.ics",
+                "\"etag2\"",
+                "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VTODO\nUID:todo-002\nSUMMARY:Sibling todo\nDTSTART:20250115T100000Z\nEND:VTODO\nBEGIN:VEVENT\nUID:event-001\nSUMMARY:Meeting\nDTSTART:20250115T100000Z\nDTEND:20250115T110000Z\nEND:VEVENT\nEND:VCALENDAR",
+            ),
+        ];
+    }
+    let events = service.get_events("cal-1", "2025-01-15", "2025-01-15").await.unwrap();
+    let uids: Vec<&str> = events.iter().map(|e| e.uid.as_str()).collect();
+    assert_eq!(uids, ["event-001"]);
 }
 
 #[tokio::test]
@@ -295,6 +340,18 @@ async fn create_event_in_unknown_calendar_is_404() {
         .unwrap_err();
     assert_eq!(err.code, 404);
     assert!(err.message.contains("Calendar not found"));
+}
+
+#[tokio::test]
+async fn create_event_in_todo_list_is_404() {
+    let (mock, service) = setup();
+    mock.state().calendars = vec![with_components("reminders", &["VTODO"])];
+    let err = service
+        .create_event("reminders", timed_event("Test", "2025-01-15T10:00:00Z", "2025-01-15T11:00:00Z"))
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, 404);
+    assert!(mock.state().last_created_ics.is_none(), "nothing is written to a to-do list");
 }
 
 #[tokio::test]
